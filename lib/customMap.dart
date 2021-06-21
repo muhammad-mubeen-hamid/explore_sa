@@ -216,10 +216,10 @@ class _CustomMapState extends State<CustomMap> {
     setState(() {
       polylines.add(
         Polyline(
-          width: 10,
+          width: 3,
           polylineId: PolylineId('polyLine'),
           color: MyColors.darkTeal,
-          points: polineCoordinates
+          points: polineCoordinates,
         )
       );
     });
