@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>527036501809-dmfbvili74du58t5sporlfifnamq7ai1.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.527036501809-dmfbvili74du58t5sporlfifnamq7ai1</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDbHjYzIwL-xBnSU2dzH0uLmJLF08rpYks</string>
+	<key>GCM_SENDER_ID</key>
+	<string>527036501809</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.mmhamid.exploresa</string>
+	<key>PROJECT_ID</key>
+	<string>exploresaapp</string>
+	<key>STORAGE_BUCKET</key>
+	<string>exploresaapp.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:527036501809:ios:1259cea35c2b7ff5242a10</string>
+</dict>
+</plist>

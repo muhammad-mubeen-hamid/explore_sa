@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "527036501809",
+    "project_id": "exploresaapp",
+    "storage_bucket": "exploresaapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527036501809:android:98acf1e444350f1f242a10",
+        "android_client_info": {
+          "package_name": "com.mmhamid.exploresa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "527036501809-haurcqdf4hvu404nthsevvmun7qpcnt3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrIFBSRjIbWvvTThSid7o57wj3CuddjsI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "527036501809-haurcqdf4hvu404nthsevvmun7qpcnt3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
