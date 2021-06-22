@@ -1,16 +1,18 @@
 import 'dart:async';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:explore_sa/customMap.dart';
+import 'package:explore_sa/navigation.dart';
+import 'package:explore_sa/services/authService.dart';
 import 'package:explore_sa/testItem.dart';
 import 'package:explore_sa/userLogReg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:explore_sa/MyColors.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_place/google_place.dart';
 import 'application_bloc.dart';
+import 'settings.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_mapbox_navigation/library.dart';
 
 
 const users = const {
@@ -37,33 +39,41 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
-  //variables
-  List<Marker> markers = [];
-  Completer<GoogleMapController> _controller = Completer();
-  bool traffic = false;
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService(FirebaseAuth.instance),),
+        StreamProvider(create: (context) => context.read<AuthService>().authStateChanges, initialData: null,)
+      ],
+      child: AuthenticationWrapper(),
+    );
+  }
+}
 
-  bool isDrawerOpen = false;
-  var googlePlace = GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
+
+//return either the Home Page or Login Page
+class AuthenticationWrapper extends StatefulWidget {
+  const AuthenticationWrapper({Key? key}) : super(key: key);
+
+  @override
+  _AuthenticationWrapperState createState() => _AuthenticationWrapperState();
+}
+
+class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
+
+  //variables
   final appBloc = new ApplicationBloc();
-  var result;
-  List<AutocompletePrediction> acp = [];
-  Completer<GoogleMapController> _mapController = Completer();
-  final searchTextField = TextEditingController();
-  List<SearchResult> nearbySearchResult = [];
-  String firstImage = "";
-  String secImage = "";
-  String thirdImage = "";
-  String fourthImage = "";
-  String fifthImage = "";
-  // Marker _origin;
-  // Marker _destination;
-  // Directions _info;
+  late MapBoxNavigation _directions;
+
 
   int _page = 0;
-  final CustomMap mapWidget = CustomMap();
+  late final CustomMap mapWidget;
   final Test testWidget = Test();
+  final Settings settings = Settings();
+  final CustomNavigation navigation = CustomNavigation();
 
-  Widget _showPage = new CustomMap();
+  late Widget _showPage = CustomMap();
 
   Widget _pagePicker(int page){
     switch (page) {
@@ -73,35 +83,43 @@ class _MainState extends State<Main> {
       case 1:
         return mapWidget;
         break;
+      case 2:
+        return settings;
+        break;
       default:
-        return testWidget;
+        return mapWidget;
         break;
     }
   }
 
+  @override
+  void initState(){
+    super.initState();
+    mapWidget = CustomMap();
+    _directions = MapBoxNavigation();
+  }
+
   GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+  int defaultPage = 1;
 
   @override
   Widget build(BuildContext context) {
-    var size = MediaQuery.of(context).size;
-    return FirebaseAuth.instance.currentUser != null ?
-      Scaffold(
+    final firebaseUser = context.watch<User?>();
+
+    if (firebaseUser != null) {
+      return Scaffold(
           bottomNavigationBar: CurvedNavigationBar(
             color: MyColors.xLightTeal,
             backgroundColor: MyColors.darkTeal,
-            index: 1,
-            height: 60,
+            index: 2,
+            height: 50,
             key: _bottomNavigationKey,
             items: <Widget>[
               Icon(Icons.location_on, size: 40),
               Icon(Icons.map_rounded, size: 40),
               Icon(Icons.house_rounded, size: 40),
             ],
-            onTap: (int tappedIndex) {
-              setState(() {
-                _showPage = _pagePicker(tappedIndex);
-              });
-            },
+            onTap: (int tappedIndex) => changeView(tappedIndex),
           ),
           body: Center(
               child: Stack(
@@ -109,10 +127,85 @@ class _MainState extends State<Main> {
                   _showPage,
                 ],
               )
-          ))
-          : Scaffold(
+          ));
+    } else {
+      return Scaffold(
         body: LoginScreen(),
       );
+    }
+  }
+  
+  changeView(int tappedIndex){
+    setState(() {
+      _showPage = _pagePicker(tappedIndex);
+    });
+  }
+
+  navigate() async {
+    MapBoxOptions _options = MapBoxOptions(
+        initialLatitude: 36.1175275,
+        initialLongitude: -115.1839524,
+        zoom: 13.0,
+        tilt: 0.0,
+        bearing: 0.0,
+        enableRefresh: false,
+        alternatives: true,
+        voiceInstructionsEnabled: true,
+        bannerInstructionsEnabled: true,
+        allowsUTurnAtWayPoints: true,
+        mode: MapBoxNavigationMode.drivingWithTraffic,
+        mapStyleUrlDay: "https://url_to_day_style",
+        mapStyleUrlNight: "https://url_to_night_style",
+        units: VoiceUnits.imperial,
+        simulateRoute: true,
+        language: "en");
+
+    final origin = WayPoint(name: "Durban", latitude: -29.858681, longitude: 31.021839);
+    final stop = WayPoint(name: "Ballito", latitude: -29.547177, longitude: 31.178887);
+
+    List<WayPoint> wayPoints = [];
+    wayPoints.add(origin);
+    wayPoints.add(stop);
+
+    await _directions.startNavigation(wayPoints: wayPoints, options: _options);
+  }
+
+  Future<void> _onRouteEvent(e) async {
+
+    double _distanceRemaining = await _directions.distanceRemaining;
+    double _durationRemaining = await _directions.durationRemaining;
+    bool? _routeBuilt, _isNavigating, _arrived;
+
+    switch (e.eventType) {
+      case MapBoxEvent.progress_change:
+        var progressEvent = e.data as RouteProgressEvent;
+        _arrived = progressEvent.arrived;
+        if (progressEvent.currentStepInstruction != null)
+         String? _instruction = progressEvent.currentStepInstruction;
+        break;
+      case MapBoxEvent.route_building:
+      case MapBoxEvent.route_built:
+        _routeBuilt = true;
+        break;
+      case MapBoxEvent.route_build_failed:
+        _routeBuilt = false;
+        break;
+      case MapBoxEvent.navigation_running:
+        _isNavigating = true;
+        break;
+      case MapBoxEvent.on_arrival:
+        _arrived = true;
+        break;
+      case MapBoxEvent.navigation_finished:
+      case MapBoxEvent.navigation_cancelled:
+        _routeBuilt = false;
+        _isNavigating = false;
+        break;
+      default:
+        break;
+    }
+    //refresh UI
+    setState(() {});
   }
 }
 

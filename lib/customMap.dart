@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:math';
+import 'package:explore_sa/customFloatingActionButton.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,8 +9,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart';
 import 'MyColors.dart';
 import 'application_bloc.dart';
-import 'package:map_polyline_draw/map_polyline_draw.dart';
-import 'package:location/location.dart';
+import 'package:geocode/geocode.dart';
 
 
 class CustomMap extends StatefulWidget {
@@ -25,7 +25,10 @@ class _CustomMapState extends State<CustomMap> {
   Set<Polyline> polylines = Set<Polyline>();
   List<LatLng> polineCoordinates = [];
   late PolylinePoints polylinePoints;
-  late LatLng destination;
+  late LatLng destination = new LatLng(109, 109);
+
+  //markers declaration
+  Set<Marker> markers = {};
 
   //other declarationns
   Completer<GoogleMapController> _controller = Completer();
@@ -41,6 +44,7 @@ class _CustomMapState extends State<CustomMap> {
   @override
   void initState(){
     super.initState();
+    getUserAddress();
     polylinePoints = PolylinePoints();
     Geolocator.getCurrentPosition().then((currLocation){
       setState((){
@@ -61,6 +65,7 @@ class _CustomMapState extends State<CustomMap> {
             Center(child: CircularProgressIndicator(),) :
             Container(
               child: GoogleMap(
+                markers: Set<Marker>.from(markers),
                 polylines: polylines,
                 trafficEnabled: false,
                 rotateGesturesEnabled: true,
@@ -130,21 +135,23 @@ class _CustomMapState extends State<CustomMap> {
                       itemBuilder: (context, index) {
                         return GestureDetector(
                           onTap: () async {
+                            resetMap();
                             DetailsResponse? endResult = await googlePlace
                                 .details.get(acp[index].placeId!);
                             DetailsResponse? startResult = await googlePlace
                                 .details.get(acp[index].placeId!);
-                            LatLng latLng = destination = new LatLng(
+                            LatLng targetLatLng = destination = new LatLng(
                                 endResult!.result!.geometry!.location!.lat!,
                                 endResult!.result!.geometry!.location!.lng!);
                             final GoogleMapController controller = await _controller
                                 .future;
                             controller.animateCamera(
                                 CameraUpdate.newCameraPosition(
-                                    CameraPosition(target: latLng,
+                                    CameraPosition(target: targetLatLng,
                                         zoom: 15)
                                 )
                             );
+                            addMarkers(currentLatLng, targetLatLng);
                             setState(() {
                               setPolylines();
                               searchTextField.text = "";
@@ -187,11 +194,14 @@ class _CustomMapState extends State<CustomMap> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.my_location, color: Colors.white,),
-        backgroundColor: MyColors.darkTeal,
-        onPressed: () => _currentPositionFAB(),
-      ) ,
+      floatingActionButton: CustomFloatingActionButton(
+        currentLatLng: currentLatLng,
+        destinationLatLng: destination,
+        currentPositionFAB: _currentPositionFAB,
+        context: context,
+        polylineCoordinates: polineCoordinates,
+        resetMap: resetMap
+      )
     );
   }
 
@@ -225,6 +235,106 @@ class _CustomMapState extends State<CustomMap> {
     });
   }
 
+  addMarkers(LatLng origin, LatLng destination) async {
 
+    String? originSnippet = "";
+    getUserAddress().then((value) => print("============================================> ADDRESSES 1 - " + value.streetAddress.toString()));
+    String? destinationSnippet = "";
+    getDestinationAddress().then((value) => print("============================================> ADDRESSES 2 - " + value.streetAddress.toString()));
 
+    Marker startMarker = Marker(
+      markerId: MarkerId(origin.toString()),
+      position: LatLng(
+        origin.latitude,
+        origin.longitude,
+      ),
+      infoWindow: InfoWindow(
+        title: 'Origin',
+        snippet: "originSnippet"
+      ),
+      icon: BitmapDescriptor.defaultMarker,
+    );
+
+// Destination Location Marker
+    Marker destinationMarker = Marker(
+      markerId: MarkerId(destination.toString()),
+      position: LatLng(
+        destination.latitude,
+        destination.longitude,
+      ),
+      infoWindow: InfoWindow(
+        title: "Destination",
+        snippet: "destinationSnippet"
+      ),
+      icon: BitmapDescriptor.defaultMarker,
+    );
+
+    markers.add(startMarker);
+    markers.add(destinationMarker);
+    //repositioning map view based on markers
+    Position _northeastCoordinates;
+    Position _southwestCoordinates;
+
+    // Calculating to check that
+    // southwest coordinate <= northeast coordinate
+    // if (origin.latitude <= destination.latitude) {
+    //   _southwestCoordinates = origin.;
+    //   _northeastCoordinates = destinationCoordinates;
+    // } else {
+    //   _southwestCoordinates = destinationCoordinates;
+    //   _northeastCoordinates = startCoordinates;
+    // }
+
+// Accommodate the two locations within the
+// camera view of the map
+//     final GoogleMapController controller = await _controller.future;
+//     controller.animateCamera(
+//       CameraUpdate.newLatLngBounds(
+//         LatLngBounds(
+//           northeast: LatLng(
+//             _northeastCoordinates.latitude,
+//             _northeastCoordinates.longitude,
+//           ),
+//           southwest: LatLng(
+//             _southwestCoordinates.latitude,
+//             _southwestCoordinates.longitude,
+//           ),
+//         ),
+//         100.0, // padding
+//       ),
+//     );
+  }
+
+  resetMap() {
+    setState(() {
+      polineCoordinates.clear();
+      polylines.clear();
+      polylinePoints = PolylinePoints();
+      markers.clear();
+      markers = {};
+      _currentPositionFAB();
+    });
+  }
+
+  Future<Address> getUserAddress() async {//call this async method from whereever you need
+    final geoCode = new GeoCode();
+    Address address = new Address();
+    try {
+      address = await geoCode.reverseGeocoding(latitude: currentLatLng.latitude, longitude: currentLatLng.longitude);
+    } catch (e) {
+      print(e);
+    }
+    return address;
+  }
+
+  Future<Address> getDestinationAddress() async {//call this async method from whereever you need
+    final geoCode = new GeoCode();
+    Address address = new Address();
+    try {
+      address = await geoCode.reverseGeocoding(latitude: destination.latitude, longitude: destination.longitude);
+    } catch (e) {
+      print(e);
+    }
+    return address;
+  }
 }
