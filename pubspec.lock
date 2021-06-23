@@ -29,6 +29,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.0"
+  carousel_slider:
+    dependency: "direct main"
+    description:
+      name: carousel_slider
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "4.0.0"
   characters:
     dependency: transitive
     description:
@@ -209,13 +216,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "5.0.0"
-  flutter_switch:
-    dependency: "direct main"
-    description:
-      name: flutter_switch
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.3.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -233,13 +233,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "9.1.0"
-  form_field_validator:
-    dependency: "direct main"
-    description:
-      name: form_field_validator
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.1.0"
   geocode:
     dependency: "direct main"
     description:
@@ -267,14 +260,14 @@ packages:
       name: geolocator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "7.1.0"
+    version: "7.1.1"
   geolocator_platform_interface:
     dependency: transitive
     description:
       name: geolocator_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.1"
+    version: "2.2.0"
   geolocator_web:
     dependency: transitive
     description:
@@ -296,13 +289,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.9.0"
-  google_geocoding:
-    dependency: "direct main"
-    description:
-      name: google_geocoding
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.2.0"
   google_maps_flutter:
     dependency: "direct main"
     description:
@@ -506,18 +492,18 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.26.0"
+  scrollable_panel:
+    dependency: "direct main"
+    description:
+      name: scrollable_panel
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.4.1"
   sky_engine:
     dependency: transitive
     description: flutter
     source: sdk
     version: "0.0.99"
-  sleek_circular_slider:
-    dependency: "direct main"
-    description:
-      name: sleek_circular_slider
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "2.0.0"
   sliding_up_panel:
     dependency: "direct main"
     description:
@@ -574,13 +560,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.3.0"
-  toggle_switch:
-    dependency: "direct main"
-    description:
-      name: toggle_switch
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.1.0"
   typed_data:
     dependency: transitive
     description:

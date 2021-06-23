@@ -1,5 +1,4 @@
 import 'dart:convert' as convert;
-import 'package:explore_sa/models/place.dart';
 import 'package:http/http.dart' as http;
 import 'package:explore_sa/models/places_search.dart';
 

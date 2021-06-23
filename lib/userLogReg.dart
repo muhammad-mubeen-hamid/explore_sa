@@ -1,6 +1,6 @@
+import 'package:explore_sa/customMap.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
-import 'package:explore_sa/mapScreen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:explore_sa/MyColors.dart';
 
@@ -36,7 +36,7 @@ class LoginScreen extends StatelessWidget {
       onSignup: _registerUser,
       onSubmitAnimationCompleted: () {
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => Map(),
+          builder: (context) => CustomMap(),
         ));
       },
       onRecoverPassword: _recoverPassword,

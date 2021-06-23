@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:explore_sa/models/place.dart';
 import 'package:explore_sa/models/places_search.dart';
 import 'package:explore_sa/services/geolocator.dart';
 import 'package:explore_sa/services/placesService.dart';

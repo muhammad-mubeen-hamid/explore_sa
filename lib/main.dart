@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:explore_sa/customMap.dart';
+import 'package:explore_sa/customPlaces.dart';
 import 'package:explore_sa/navigation.dart';
+import 'package:explore_sa/neabyPlaces.dart';
 import 'package:explore_sa/services/authService.dart';
-import 'package:explore_sa/testItem.dart';
 import 'package:explore_sa/userLogReg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +70,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
 
   int _page = 0;
   late final CustomMap mapWidget;
-  final Test testWidget = Test();
+  final CustomPlaces places = CustomPlaces();
   final Settings settings = Settings();
   final CustomNavigation navigation = CustomNavigation();
 
@@ -78,7 +79,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   Widget _pagePicker(int page){
     switch (page) {
       case 0:
-        return testWidget;
+        return places;
         break;
       case 1:
         return mapWidget;
@@ -111,6 +112,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
           bottomNavigationBar: CurvedNavigationBar(
             color: MyColors.xLightTeal,
             backgroundColor: MyColors.darkTeal,
+            buttonBackgroundColor: MyColors.xLightTeal,
             index: 2,
             height: 50,
             key: _bottomNavigationKey,
