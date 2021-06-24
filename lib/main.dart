@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:explore_sa/MyColors.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'application_bloc.dart';
-import 'settings.dart';
+import 'customSettings.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_mapbox_navigation/library.dart';
 
@@ -71,7 +71,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   int _page = 0;
   late final CustomMap mapWidget;
   final CustomPlaces places = CustomPlaces();
-  final Settings settings = Settings();
+  final CustomSettings settings = CustomSettings();
   final CustomNavigation navigation = CustomNavigation();
 
   late Widget _showPage = CustomMap();
