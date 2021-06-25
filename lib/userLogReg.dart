@@ -1,8 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:explore_sa/customMap.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:explore_sa/MyColors.dart';
+
+import 'customSettings.dart';
 
 
 class LoginScreen extends StatelessWidget {
@@ -30,13 +33,12 @@ class LoginScreen extends StatelessWidget {
               color: MyColors.xLightTeal
           )
       ),
-      title: 'ECORP',
-      logo: 'assets/images/ecorp-lightblue.png',
+      logo: 'assets/images/logo.png',
       onLogin: _loginUser,
       onSignup: _registerUser,
       onSubmitAnimationCompleted: () {
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => CustomMap(),
+          builder: (context) => CustomSettings(),
         ));
       },
       onRecoverPassword: _recoverPassword,
@@ -68,10 +70,15 @@ class LoginScreen extends StatelessWidget {
     late String status;
     print('Registration =======================> Name: ${data.name}, Password: ${data.password}');
     try {
-      userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: data.name,
           password: data.password
       );
+      CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
+      await usersRef.doc(getCurrentUser().uid).set(
+          {'displayName': "Name", 'uid': getCurrentUser().uid, 'locationPref': 'All', 'measureSystem': 'Kilometers'}
+      ).catchError((onError) =>
+          print(onError));
       status = "User registered!";
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
