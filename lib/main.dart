@@ -15,6 +15,8 @@ import 'customSettings.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_mapbox_navigation/library.dart';
 
+import 'globals.dart';
+
 
 const users = const {
   'dribbble@gmail.com': '12345',
@@ -74,7 +76,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   final CustomSettings settings = CustomSettings();
   final CustomNavigation navigation = CustomNavigation();
 
-  late Widget _showPage = CustomMap();
+  late Widget _showPage = CustomSettings();
 
   Widget _pagePicker(int page){
     switch (page) {
@@ -96,7 +98,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   @override
   void initState(){
     super.initState();
-    mapWidget = CustomMap();
+    mapWidget = CustomMap(stream: Globals.streamController.stream,);
     _directions = MapBoxNavigation();
   }
 

@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:scrollable_panel/scrollable_panel.dart';
 
+import 'locationServices.dart';
 
+//----------------------------------_> Figure out how to add user data when signing up
 class CustomSettings extends StatefulWidget {
   const CustomSettings({Key? key}) : super(key: key);
 
@@ -20,14 +22,14 @@ class CustomSettings extends StatefulWidget {
 class _CustomSettingsState extends State<CustomSettings> {
 
   Map<String, String> placeTypes = {
-    "Finance":"finance",
-    "Restaurant":"food",
-    "Health":"health",
-    "Landmark":"landmark",
-    "Nature":"natural_feature",
-    "Holy Places":"place_of_worship",
-    "Interests":"point_of_interest",
-    "Political":"political",
+    "Finance": "finance",
+    "Restaurant": "food",
+    "Health": "health",
+    "Landmark": "landmark",
+    "Nature": "natural_feature",
+    "Holy Places": "place_of_worship",
+    "Interests": "point_of_interest",
+    "Political": "political",
   };
 
   //scrollable panel declarations
@@ -44,6 +46,9 @@ class _CustomSettingsState extends State<CustomSettings> {
   @override
   void initState() {
     super.initState();
+    setState(() {
+      Globals.showSpinner = true;
+    });
     extractUserName().then((value) {
       Globals.usersName = value;
     });
@@ -53,17 +58,18 @@ class _CustomSettingsState extends State<CustomSettings> {
     extractUserMetric().then((value) {
       Globals.measureSystem = value;
     });
-  }
-
-  void callback(Widget nextPage) {
-    setState(() {
-      this.rootPage = nextPage;
+    LocationServices.getCurrentLatLng().then((value) => {
+      print("WE FOUND LOCATION ON LOGIN ==================> ${value.latitude}/${value.longitude}"),
+      setState(() {
+      Globals.showSpinner = false;
+      })
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (Globals.usersName == "non" || Globals.showSpinner == true) {
+    if (Globals.showSpinner == true) {
+
       return CircularProgressIndicator();
     } else {
       double width = MediaQuery.of(context).size.width;
@@ -87,9 +93,9 @@ class _CustomSettingsState extends State<CustomSettings> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Icon(
-                            AntDesign.arrowleft,
-                            color: MyColors.darkTeal,
-                          ),
+                          AntDesign.arrowleft,
+                          color: MyColors.darkTeal,
+                        ),
                         GestureDetector(
                           child: Icon(
                             AntDesign.logout,
@@ -144,10 +150,10 @@ class _CustomSettingsState extends State<CustomSettings> {
                                         child: Text(
                                           '${Globals.usersName}',
                                           style: TextStyle(
-                                            color: MyColors.darkTeal,
-                                            fontFamily: 'Nunito',
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold
+                                              color: MyColors.darkTeal,
+                                              fontFamily: 'Nunito',
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold
                                           ),
                                         ),
                                       ),
@@ -181,7 +187,8 @@ class _CustomSettingsState extends State<CustomSettings> {
                                               child: TextField(
                                                 controller: nameTextField,
                                                 decoration: InputDecoration(
-                                                    hintText: '${Globals.usersName}',
+                                                    hintText: '${Globals
+                                                        .usersName}',
                                                     hintStyle: TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.grey),
@@ -193,8 +200,13 @@ class _CustomSettingsState extends State<CustomSettings> {
                                               child: Icon(
                                                   Icons.done_outline_rounded),
                                               onTap: () {
-                                                usersRef.doc(getCurrentUserUID()).set(
-                                                    {'displayName': nameTextField.text, 'uid': getCurrentUserUID()}
+                                                usersRef.doc(
+                                                    getCurrentUserUID()).set(
+                                                    {
+                                                      'displayName': nameTextField
+                                                          .text,
+                                                      'uid': getCurrentUserUID()
+                                                    }
                                                 ).catchError((onError) =>
                                                     print(onError));
 
@@ -218,11 +230,11 @@ class _CustomSettingsState extends State<CustomSettings> {
                                 top: 110,
                                 right: 20,
                                 child: GestureDetector(
-                                  child: Icon(
-                                    AntDesign.setting,
-                                    color: Colors.grey[700],
-                                    size: 30,
-                                  )
+                                    child: Icon(
+                                      AntDesign.setting,
+                                      color: Colors.grey[700],
+                                      size: 30,
+                                    )
                                 ),
                               ),
                               Positioned(
@@ -262,18 +274,18 @@ class _CustomSettingsState extends State<CustomSettings> {
                               height: 20,
                             ),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.settings),
-                                Text(
-                                ' Preferences',
-                                style: TextStyle(
-                                  color: MyColors.darkTeal,
-                                  fontSize: 20,
-                                  fontFamily: 'Nunito',
-                                ),
-                              ),
-                              ]
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.settings),
+                                  Text(
+                                    ' Preferences',
+                                    style: TextStyle(
+                                      color: MyColors.darkTeal,
+                                      fontSize: 20,
+                                      fontFamily: 'Nunito',
+                                    ),
+                                  ),
+                                ]
                             ),
                             Divider(
                               thickness: 2.5,
@@ -287,24 +299,29 @@ class _CustomSettingsState extends State<CustomSettings> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 0, vertical: 20),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.add_location_alt_rounded),
-                                  Container(
-                                    width: width * 0.62,
-                                    child: Container(
-                                      child: Text("${Globals.usersPref}", style: TextStyle(fontWeight: FontWeight.bold, color: MyColors.darkTeal),),
-                                      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                                    ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 0, vertical: 20),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.add_location_alt_rounded),
+                                      Container(
+                                        width: width * 0.62,
+                                        child: Container(
+                                          child: Text("${Globals.usersPref}",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: MyColors.darkTeal),),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 10, horizontal: 10),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
                                 GestureDetector(
                                   child: Icon(Icons.edit_outlined),
-                                  onTap: (){
+                                  onTap: () {
                                     _panelController.open();
                                   },
                                 ),
@@ -320,8 +337,13 @@ class _CustomSettingsState extends State<CustomSettings> {
                                       Container(
                                         width: width * 0.62,
                                         child: Container(
-                                          child: Text("${Globals.measureSystem}", style: TextStyle(fontWeight: FontWeight.bold, color: MyColors.darkTeal),),
-                                          padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                                          child: Text(
+                                            "${Globals.measureSystem}",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: MyColors.darkTeal),),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 5, horizontal: 10),
                                         ),
                                       ),
                                     ],
@@ -331,12 +353,17 @@ class _CustomSettingsState extends State<CustomSettings> {
                                   child: Icon(Icons.compare_arrows_rounded),
                                   onTap: () async {
                                     extractUserMetric();
-                                    if (Globals.measureSystem == "Kilometers"){
-                                      await usersRef.doc(getCurrentUserUID()).update({'measureSystem': "Miles"})
-                                          .catchError((onError) => print(onError));
+                                    if (Globals.measureSystem == "Kilometers") {
+                                      await usersRef.doc(getCurrentUserUID())
+                                          .update({'measureSystem': "Miles"})
+                                          .catchError((onError) =>
+                                          print(onError));
                                     } else {
-                                      await usersRef.doc(getCurrentUserUID()).update({'measureSystem': "Kilometers"})
-                                          .catchError((onError) => print(onError));
+                                      await usersRef.doc(getCurrentUserUID())
+                                          .update(
+                                          {'measureSystem': "Kilometers"})
+                                          .catchError((onError) =>
+                                          print(onError));
                                     }
                                   },
                                 ),
@@ -360,7 +387,10 @@ class _CustomSettingsState extends State<CustomSettings> {
             builder: (context, controller) {
               return SingleChildScrollView(
                 controller: controller,
-                child: PanelView(placesTypes: placeTypes, panelController: _panelController, changeUserPref: changeDisplayPref, extractUserPref: extractUserPref,),
+                child: PanelView(placesTypes: placeTypes,
+                  panelController: _panelController,
+                  changeUserPref: changeDisplayPref,
+                  extractUserPref: extractUserPref,),
               );
             },
           )
@@ -369,7 +399,7 @@ class _CustomSettingsState extends State<CustomSettings> {
     }
   }
 
-  String getCurrentUserUID(){
+  String getCurrentUserUID() {
     final User? user = auth.currentUser;
     return user!.uid;
   }
@@ -387,7 +417,6 @@ class _CustomSettingsState extends State<CustomSettings> {
   }
 
   Future<String> extractUserName() async {
-
     var result;
     await usersRef.doc(getCurrentUserUID()).get().then((value) {
       result = value.data();
@@ -412,7 +441,6 @@ class _CustomSettingsState extends State<CustomSettings> {
   }
 
   Future<String> extractUserMetric() async {
-
     var result;
     await usersRef.doc(getCurrentUserUID()).get().then((value) {
       result = value.data();
@@ -449,7 +477,21 @@ class _CustomSettingsState extends State<CustomSettings> {
     return result['locationPref'];
   }
 
-
+  Future<bool> prepareUserDetails() async {
+    if (Globals.usersName == "non") {
+      await usersRef.doc(getCurrentUserUID()).set(
+          {
+            'displayName': "Name",
+            'uid': getCurrentUserUID(),
+            'locationPref': 'All',
+            'measureSystem': 'Kilometers'
+          }
+      ).catchError((onError) {
+        print(onError);
+      });
+    }
+    return true;
+  }
 }
 
 class PanelView extends StatefulWidget {

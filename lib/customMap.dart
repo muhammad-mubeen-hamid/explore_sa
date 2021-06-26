@@ -1,24 +1,23 @@
 import 'dart:async';
-import 'dart:convert' as convert;
 import 'dart:typed_data';
 import 'package:explore_sa/customFloatingActionButton.dart';
-import 'package:explore_sa/models/nearby_places.dart';
+import 'package:explore_sa/globals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart' as GooglePlace;
-import 'package:google_place/google_place.dart';
 import 'MyColors.dart';
 import 'application_bloc.dart';
-import 'package:geocode/geocode.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_panel/scrollable_panel.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 
+import 'locationServices.dart';
 
 class CustomMap extends StatefulWidget {
-  const CustomMap({Key? key}) : super(key: key);
+  final Stream<LatLng> stream;
+  const CustomMap({Key? key, required this.stream}) : super(key: key);
 
   @override
   _CustomMapState createState() => _CustomMapState();
@@ -27,25 +26,12 @@ class CustomMap extends StatefulWidget {
 class _CustomMapState extends State<CustomMap> {
 
   //config declaration
+  bool refreshView = false;
   bool showFloatinActionButton = true;
+  bool destinationMarkerAdded = false;
 
   //scrollable panel declarations
   PanelController _panelController = PanelController();
-
-  //polylines declaration
-  Set<Polyline> polylines = Set<Polyline>();
-  List<LatLng> polineCoordinates = [];
-  late PolylinePoints polylinePoints;
-  late LatLng destination = new LatLng(109, 109);
-
-  //markers declaration
-  Set<Marker> markers = {};
-  Set<Marker> multipleMarkers = {};
-
-  //nearby places declaration
-  late List<GooglePlace.SearchResult> nearbySearchResult = [];
-  late Map<String, String> nearbyPlacesImages = new Map<String, String>();
-  List<String> imgURLs = [];
 
   //other declarationns
   Completer<GoogleMapController> _controller = Completer();
@@ -55,23 +41,29 @@ class _CustomMapState extends State<CustomMap> {
   List<GooglePlace.AutocompletePrediction> acp = [];
   final searchTextField = TextEditingController();
 
-  LatLng currentLatLng = new LatLng(109, 109);
-
-  Future<LatLng> currentLatLngFTR = Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high, forceAndroidLocationManager: true)
-  .then((value) => LatLng(value.latitude, value.longitude));
 
   @override
   void initState() {
     super.initState();
-    getUserAddress();
-    polylinePoints = PolylinePoints();
-    Geolocator.getCurrentPosition().then((currLocation){
-      setState((){
-        currentLatLng = new LatLng(currLocation.latitude, currLocation.longitude);
+    setState(() {
+      Globals.showSpinner = true;
+      Globals.progressStatusMessage = "Loading \nLocation Data";
+    });
+    LocationServices.getUserAddress().then((value) {
+      print("USER ADDRESS FOUND IN INIT ==================> ${value.streetAddress}");
+    });
+    LocationServices.polylinePoints = PolylinePoints();
+    setState(() {
+      Globals.progressStatusMessage = "Locating \nNearby Preferences";
+    });
+    LocationServices.processNearbyPlaces().then((value) {
+      LocationServices.nearbySearchResult = value;
+      setState(() {
+        Globals.showSpinner = false;
       });
     });
-    getNearbyPlaces().then((value) {
-      nearbySearchResult = value;
+    widget.stream.listen((latlng) {
+      navigate(latlng);
     });
   }
 
@@ -81,14 +73,46 @@ class _CustomMapState extends State<CustomMap> {
 
     return Scaffold(
         body: Container(
-          child: Stack(
+          child: Globals.showSpinner ? Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height,
+            color: MyColors.darkTeal,
+            child: Center(
+              child: Wrap(
+                direction: Axis.vertical,
+                alignment: WrapAlignment.center,
+                children: [
+                  Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+                  SizedBox(height: size.height * 0.1,),
+                  Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
+                ],
+              ),
+            ),
+          ):
+          Stack(
             children: [
-              currentLatLng == new LatLng(109, 109) ?
-              Center(child: CircularProgressIndicator(),) :
+              LocationServices.currentLatLng == new LatLng(109, 109) ?
+              Center(child: Container(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height,
+                color: MyColors.darkTeal,
+                child: Center(
+                  child: Wrap(
+                    direction: Axis.vertical,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+                      SizedBox(height: size.height * 0.1,),
+                      Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
+                    ],
+                  ),
+                ),
+              )
+              ) :
               Container(
                 child: GoogleMap(
-                  markers: markers.length <= 2 ? Set<Marker>.from(markers) : Set<Marker>.from(multipleMarkers),
-                  polylines: polylines,
+                  markers: LocationServices.markers.length <= 2 ? Set<Marker>.from(LocationServices.markers) : Set<Marker>.from(LocationServices.multipleMarkers),
+                  polylines: LocationServices.getPolylines(),
                   trafficEnabled: false,
                   rotateGesturesEnabled: true,
                   buildingsEnabled: true,
@@ -96,10 +120,10 @@ class _CustomMapState extends State<CustomMap> {
                   myLocationButtonEnabled: false,
                   mapType: MapType.normal,
                   zoomControlsEnabled: false,
-                  initialCameraPosition: CameraPosition(target:currentLatLng, zoom: 15),
+                  initialCameraPosition: CameraPosition(target: LocationServices.currentLatLng, zoom: 15),
                   onMapCreated: (GoogleMapController controller) {
                     _controller.complete(controller);
-                    setPolylines();
+                    LocationServices.setPolylines();
                   },
                 ),
               ),
@@ -169,7 +193,7 @@ class _CustomMapState extends State<CustomMap> {
                         ),
                         onTap: () async {
                           _panelController.open();
-                          addMultipleMarkers(LatLng(currentLatLng.latitude, currentLatLng.longitude));
+                          LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
                           //nearbySearchResult = await this.getNearbyPlaces().then((value) => value);
                           getPhoto();
                         }
@@ -206,27 +230,41 @@ class _CustomMapState extends State<CustomMap> {
                         itemBuilder: (context, index) {
                           return GestureDetector(
                             onTap: () async {
-                              resetMap();
+                              //LocationServices.resetMap();
                               GooglePlace.DetailsResponse? endResult = await googlePlace
                                   .details.get(acp[index].placeId!);
                               GooglePlace.DetailsResponse? startResult = await googlePlace
                                   .details.get(acp[index].placeId!);
-                              LatLng targetLatLng = destination = new LatLng(
+                              LatLng targetLatLng = LocationServices.destinationLatLng = new LatLng(
                                   endResult!.result!.geometry!.location!.lat!,
-                                  endResult!.result!.geometry!.location!.lng!);
-                              final GoogleMapController controller = await _controller
-                                  .future;
-                              controller.animateCamera(
-                                  CameraUpdate.newCameraPosition(
-                                      CameraPosition(target: targetLatLng,
-                                          zoom: 15)
+                                  endResult.result!.geometry!.location!.lng!);
+                              final GoogleMapController controller = await _controller.future;
+                              controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
                                   )
                               );
-                              addMarkers(currentLatLng, targetLatLng);
+                              _panelController.close();
+                              Globals.progressStatusMessage = "Calculating Route\nInformation";
+                              LocationServices.destinationLatLng = targetLatLng;
                               setState(() {
-                                setPolylines();
-                                searchTextField.text = "";
-                                acp = [];
+                                Globals.showSpinner = true;
+                              });
+
+                              await LocationServices.addMarkers(LocationServices.currentLatLng, LocationServices.destinationLatLng).then((value) {
+                                setState(() {
+                                  searchTextField.text = "";
+                                  acp = [];
+                                  setState(() {
+                                    Globals.showSpinner = false;
+                                  });
+                                });
+                              });
+                              await LocationServices.setPolylines().then((value) {
+                                setState(() {
+                                  searchTextField.text = "";
+                                  acp = [];
+                                  showFloatinActionButton = true;
+                                  Globals.showSpinner = false;
+                                });
                               });
                             },
                             child: Row(
@@ -279,7 +317,7 @@ class _CustomMapState extends State<CustomMap> {
                 builder: (context, controller) {
                   return SingleChildScrollView(
                     controller: controller,
-                    child: _PanelView(nearbySearchResult: nearbySearchResult,),
+                    child: _PanelView(nearbySearchResult: LocationServices.getNearbySearchResult()),
                   );
                 },
               )
@@ -287,178 +325,27 @@ class _CustomMapState extends State<CustomMap> {
           ),
         ),
         floatingActionButton: showFloatinActionButton ? CustomFloatingActionButton(
-            currentLatLng: currentLatLng,
-            destinationLatLng: destination,
+            currentLatLng: LocationServices.currentLatLng,
+            destinationLatLng: LocationServices.destinationLatLng,
             currentPositionFAB: _currentPositionFAB,
             context: context,
-            polylineCoordinates: polineCoordinates,
-            resetMap: resetMap
+            polylineCoordinates: LocationServices.polineCoordinates,
+            resetMap: LocationServices.resetMap,
+            resetView: refreshViewF,
         ) : FloatingActionButton(onPressed: () => print(""), foregroundColor: MyColors.darkTeal, backgroundColor: MyColors.darkTeal,)
     );
   }
 
   Future<void> _currentPositionFAB() async {
+    print("ANIMATING TO CURRENT LOCATION ===========================> " + LocationServices.currentLatLng.toString());
     final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: currentLatLng, zoom: 15)));
-  }
-
-  void setPolylines() async {
-    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        "AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
-        PointLatLng(currentLatLng.latitude, currentLatLng.longitude),
-        PointLatLng(destination.latitude, destination.longitude)
-    );
-
-    if (result.status == 'OK'){
-      result.points.forEach((PointLatLng point) {
-        polineCoordinates.add(LatLng(point.latitude, point.longitude));
-      });
-    }
-
-    setState(() {
-      polylines.add(
-          Polyline(
-            width: 3,
-            polylineId: PolylineId('polyLine'),
-            color: MyColors.darkTeal,
-            points: polineCoordinates,
-          )
-      );
-    });
-  }
-
-  addMarkers(LatLng origin, LatLng destination) async {
-
-    String? originSnippet = "";
-    getUserAddress().then((value) => print("============================================> ADDRESSES 1 - " + value.streetAddress.toString()));
-    String? destinationSnippet = "";
-    getDestinationAddress().then((value) => print("============================================> ADDRESSES 2 - " + value.streetAddress.toString()));
-
-    Marker startMarker = Marker(
-      markerId: MarkerId(origin.toString()),
-      position: LatLng(
-        origin.latitude,
-        origin.longitude,
-      ),
-      infoWindow: InfoWindow(
-          title: 'Origin',
-          snippet: "originSnippet"
-      ),
-      icon: BitmapDescriptor.defaultMarker,
-    );
-
-// Destination Location Marker
-    Marker destinationMarker = Marker(
-      markerId: MarkerId(destination.toString()),
-      position: LatLng(
-        destination.latitude,
-        destination.longitude,
-      ),
-      infoWindow: InfoWindow(
-          title: "Destination",
-          snippet: "destinationSnippet"
-      ),
-      icon: BitmapDescriptor.defaultMarker,
-    );
-
-    markers.add(startMarker);
-    markers.add(destinationMarker);
-
-  }
-
-  addMultipleMarkers(LatLng latLng) {
-    //this method finds the total number of Lat-Lngs in the array -> 20 Lat-Lngs exist
-    print("'addMultipleMarkers()' ====================> ${nearbySearchResult.length}");
-
-    for (var i in nearbySearchResult){
-      double? lat = 0;
-      double? lng = 0;
-      if (i.geometry!.location!.lat != null){
-        lat = i.geometry!.location!.lat;
-      }
-      if (i.geometry!.location!.lng != null){
-        lng = i.geometry!.location!.lng;
-      }
-
-      print("LAT LNG OF MARKER TO ADD ${i.geometry!.location!.lat} ${i.geometry!.location!.lng}");
-        Marker marker = Marker(
-          markerId: MarkerId(i.geometry!.location.toString()),
-          position: LatLng(lat!, lng!),
-          infoWindow: InfoWindow(
-              title: 'Origin',
-              snippet: "originSnippet"
-          ),
-          icon: BitmapDescriptor.defaultMarker,
-        );
-        setState(() {
-          multipleMarkers.add(marker);
-        });
-      }
-    //this print line confirms that 20 marks have have been successfully stored in 'multipleMarkers' array
-    print("============> TOTAL MARKERS " + multipleMarkers.length.toString());
-  }
-
-
-  resetMap() {
-    setState(() {
-      polineCoordinates.clear();
-      polylines.clear();
-      polylinePoints = PolylinePoints();
-      markers.clear();
-      markers = {};
-      _currentPositionFAB();
-    });
-  }
-
-  Future<Address> getUserAddress() async {//call this async method from whereever you need
-    final geoCode = new GeoCode();
-    Address address = new Address();
-    try {
-      address = await geoCode.reverseGeocoding(latitude: currentLatLng.latitude, longitude: currentLatLng.longitude);
-    } catch (e) {
-      print(e);
-    }
-    return address;
-  }
-
-  Future<Address> getDestinationAddress() async {//call this async method from whereever you need
-    final geoCode = new GeoCode();
-    Address address = new Address();
-    try {
-      address = await geoCode.reverseGeocoding(latitude: destination.latitude, longitude: destination.longitude);
-    } catch (e) {
-      print(e);
-    }
-    return address;
-  }
-
-  Future<List<GooglePlace.SearchResult>> getNearbyPlaces() async {
-
-    double lat = await  currentLatLngFTR.then((value) {
-      double lat = value.latitude;
-      return lat;
-    });
-    double lng = await  currentLatLngFTR.then((value) {
-      double lng = value.longitude;
-      return lng;
-    });
-
-    print("'getNearbyPlaces()' ======================================> LATLNG " + lat.toString() + " / " + lng.toString());
-    List<GooglePlace.SearchResult>? temp = [];
-    var googlePlace = GooglePlace.GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
-    var result = await googlePlace.search.getNearBySearch(GooglePlace.Location(lat: lat, lng: lng), 1500);
-
-    if (result != null) {
-      temp = result.results;
-      print("'getNearbyPlaces()' ===================> NEARBY PLACES " + temp!.length.toString());
-    }
-    return temp;
+    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.currentLatLng, zoom: 15)));
   }
 
   Future<Map<String, Uint8List>> getPhoto() async {
     Map<String, Uint8List> data = new Map<String, Uint8List>();
 
-    nearbySearchResult.forEach((i1) {
+    LocationServices.getNearbySearchResult().forEach((i1) {
       i1.photos!.forEach((i2) async {
         http.Response result = await http.get(Uri.parse("https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI"));
         if (result != null && mounted) {
@@ -470,61 +357,220 @@ class _CustomMapState extends State<CustomMap> {
 
     return data;
   }
+
+  refreshViewF(){
+    setState(() {
+      refreshView = !refreshView;
+      _currentPositionFAB();
+    });
+  }
+
+  void navigate(LatLng targetLatLng) async {
+    bool val = true;
+    LocationServices.resetMap();
+    setState(() {
+      _panelController.close();
+      Globals.showSpinner = true;
+      Globals.progressStatusMessage = "Calculating Route\nInformation";
+      LocationServices.destinationLatLng = targetLatLng;
+    });
+
+    await LocationServices.addMarkers(LocationServices.currentLatLng, targetLatLng).then((value) {
+      setState(() {
+        searchTextField.text = "";
+        acp = [];
+      });
+    });
+
+    await LocationServices.setPolylines().then((value) {
+      setState(() {
+        Globals.enRoute = true;
+        val = !val;
+        searchTextField.text = "";
+        acp = [];
+        showFloatinActionButton = true;
+        Globals.showSpinner = false;
+      });
+    });
+  }
 }
 
-Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult){
-  var googlePlace = GooglePlace.GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
-  List<Uint8List> img = [];
+Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
 
   return Container(
       child: CarouselSlider(
-        options: CarouselOptions(height: 150),
+        options: CarouselOptions(height: 170),
         items: nearbySearchResult.map((i) {
-          return Builder(
-            builder: (BuildContext context) {
-              return Container(
-                  width: MediaQuery.of(context).size.width,
-                  margin: EdgeInsets.symmetric(horizontal: 5.0),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: MyColors.xLightTeal,
-                    ),
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                    color: MyColors.xLightTeal,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(20.0),
-                            child: Image.network(
-                              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=195&photoreference=${i.photos!.first.photoReference}&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
-                              fit: BoxFit.fill,
-                            ),
-                          ),
-                          Flexible(child: new Text('${i.name}'), fit: FlexFit.loose,),
-                        ],),
-                      Column(
-                        children: [
-                          Flexible(child: Text("${i.types!.first}", softWrap: true,))
-                        ],
-                      )
-                    ],
-                  )
-              );
-            },
-          );
-        }).toList(),
+            return Builder(
+              builder: (BuildContext context) {
+                return Container(
+                    margin: EdgeInsets.fromLTRB(10, 0, 10, 30),
+                    child: _boxes(
+                      "https://maps.googleapis.com/maps/api/place/photo?maxwidth=195&photoreference=${i.photos?.first.photoReference}&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
+                      i.name!,
+                      i.rating!,
+                      i.geometry?.location?.lat,
+                      i.geometry?.location?.lng,
+                    )
+                );
+              },
+            );
+          }
+        ).toList(),
       )
   );
 }
 
-class _PanelView extends StatelessWidget {
-  List<GooglePlace.SearchResult> nearbySearchResult;
+Widget _boxes(String _image, String placeName, double rating, double? lat, double? lng) {
+  return  GestureDetector(
+    onTap: () async {
+      Globals.streamController.add(LatLng(lat!, lng!));
+    },
+    child: Container(
+      child: new FittedBox(
+        child: Material(
+            color: MyColors.xLightTeal,
+            borderRadius: BorderRadius.circular(24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Container(
+                  width: 300,
+                  height: 250,
+                  child: ClipRRect(
+                    borderRadius: new BorderRadius.circular(24.0),
+                    child: Image(
+                      fit: BoxFit.fill,
+                      image: NetworkImage(_image),
+                    ),
+                  ),),
+                Container(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: myDetailsContainer1(placeName, rating),
+                  ),
+                ),
 
-  _PanelView({required this.nearbySearchResult,});
+              ],)
+        ),
+      ),
+    ),
+  );
+}
+
+Widget myDetailsContainer1(String placeName, double rating,) {
+  return Column(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(left: 8.0),
+        child: Container(
+          width: 250,
+            child: Wrap(
+              direction: Axis.horizontal,
+              alignment: WrapAlignment.center,
+              children: [
+                Text(
+                placeName,
+                style: TextStyle(
+                    color: MyColors.darkTeal,
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,),
+                  textAlign: TextAlign.center,
+              )],
+            )),
+      ),
+      SizedBox(height:5.0),
+      Container(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              Container(
+                  child: Text(
+                    rating.toString(),
+                    style: TextStyle(
+                      color: MyColors.darkTeal,
+                      fontSize: 18.0,
+                    ),
+                  )),
+              Container(
+                child: Icon(
+                  FontAwesomeIcons.solidStar,
+                  color: Colors.amber,
+                  size: 15.0,
+                ),
+              ),
+              Container(
+                child: Icon(
+                  FontAwesomeIcons.solidStar,
+                  color: Colors.amber,
+                  size: 15.0,
+                ),
+              ),
+              Container(
+                child: Icon(
+                  FontAwesomeIcons.solidStar,
+                  color: Colors.amber,
+                  size: 15.0,
+                ),
+              ),
+              Container(
+                child: Icon(
+                  FontAwesomeIcons.solidStar,
+                  color: Colors.amber,
+                  size: 15.0,
+                ),
+              ),
+              Container(
+                child: Icon(
+                  FontAwesomeIcons.solidStarHalf,
+                  color: Colors.amber,
+                  size: 15.0,
+                ),
+              ),
+              Container(
+                  child: Text(
+                    "(946)",
+                    style: TextStyle(
+                      color: MyColors.darkTeal,
+                      fontSize: 18.0,
+                    ),
+                  )),
+            ],
+          )),
+      SizedBox(height:5.0),
+      Container(
+          child: Text(
+            "American \u00B7 \u0024\u0024 \u00B7 1.6 mi",
+            style: TextStyle(
+              color: MyColors.darkTeal,
+              fontSize: 18.0,
+            ),
+          )),
+      SizedBox(height:5.0),
+      Container(
+          child: Text(
+            "Closed \u00B7 Opens 17:00 Thu",
+            style: TextStyle(
+                color: MyColors.darkTeal,
+                fontSize: 18.0,
+                fontWeight: FontWeight.bold),
+          )),
+    ],
+  );
+}
+
+class _PanelView extends StatefulWidget {
+  final List<GooglePlace.SearchResult> nearbySearchResult;
+  const _PanelView({Key? key, required this.nearbySearchResult}) : super(key: key);
+
+  @override
+  _PanelViewState createState() => _PanelViewState(nearbySearchResult: nearbySearchResult);
+}
+
+class _PanelViewState extends State<_PanelView> {
+  List<GooglePlace.SearchResult> nearbySearchResult;
+  _PanelViewState({required this.nearbySearchResult});
 
   @override
   Widget build(BuildContext context) {
@@ -543,10 +589,11 @@ class _PanelView extends StatelessWidget {
               borderRadius: const BorderRadius.only(topLeft: Radius.circular(circularBoxHeight), topRight: Radius.circular(circularBoxHeight)),
               border: Border.all(color: MyColors.darkTeal),
             ),
-            child: showNearbyData(nearbySearchResult,),
+            child: showNearbyData(nearbySearchResult),
           ),
         );
       },
     );
   }
 }
+

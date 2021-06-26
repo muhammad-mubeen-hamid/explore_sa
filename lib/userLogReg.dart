@@ -68,17 +68,14 @@ class LoginScreen extends StatelessWidget {
 
   Future<String> _registerUser(LoginData data) async {
     late String status;
+    CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
     print('Registration =======================> Name: ${data.name}, Password: ${data.password}');
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: data.name,
           password: data.password
       );
-      CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
-      await usersRef.doc(getCurrentUser().uid).set(
-          {'displayName': "Name", 'uid': getCurrentUser().uid, 'locationPref': 'All', 'measureSystem': 'Kilometers'}
-      ).catchError((onError) =>
-          print(onError));
+
       status = "User registered!";
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {

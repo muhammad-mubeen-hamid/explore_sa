@@ -5,6 +5,7 @@ import 'package:geocode/geocode.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'MyColors.dart';
+import 'globals.dart';
 
 class CustomFloatingActionButton extends StatefulWidget {
   LatLng currentLatLng;
@@ -13,6 +14,7 @@ class CustomFloatingActionButton extends StatefulWidget {
   final Function resetMap;
   final BuildContext context;
   List<LatLng> polylineCoordinates;
+  Function resetView;
   CustomFloatingActionButton({
     Key? key,
     required this.currentLatLng,
@@ -20,7 +22,8 @@ class CustomFloatingActionButton extends StatefulWidget {
     required this.currentPositionFAB,
     required this.context,
     required this.polylineCoordinates,
-    required this.resetMap
+    required this.resetMap,
+    required this.resetView
   }) : super(key: key);
   @override
   _CustomFloatingActionButtonState createState() => _CustomFloatingActionButtonState();
@@ -86,7 +89,10 @@ class _CustomFloatingActionButtonState extends State<CustomFloatingActionButton>
           labelStyle: TextStyle(fontSize: 12.0, color: MyColors.mediumTeal),
           foregroundColor: MyColors.xLightTeal,
           labelBackgroundColor: MyColors.xLightTeal,
-          onTap: () => widget.resetMap(),
+          onTap: () {
+            widget.resetMap();
+            widget.resetView();
+          },
           onLongPress: () => print('FIRST CHILD LONG PRESS'),
         ),
         //SECOND ICON
@@ -127,11 +133,11 @@ class _CustomFloatingActionButtonState extends State<CustomFloatingActionButton>
         bannerInstructionsEnabled: true,
         allowsUTurnAtWayPoints: true,
         mode: MapBoxNavigationMode.drivingWithTraffic,
-        units: VoiceUnits.imperial,
+        units: Globals.measureSystem == "Kilometers" ? VoiceUnits.metric: VoiceUnits.imperial,
         simulateRoute: true,
         language: "en",
     );
-    print("=================================================> DESTINATION LATLNG " + widget.destinationLatLng.latitude.toString() + " " + widget.destinationLatLng.longitude.toString());
+    print("=================================================> DESTINATION LAT LNG FOR NAVIGATION " + widget.destinationLatLng.latitude.toString() + " " + widget.destinationLatLng.longitude.toString());
     final origin = WayPoint(name: "Durban", latitude: widget.currentLatLng.latitude, longitude: widget.currentLatLng.longitude);
     final stop = WayPoint(name: "Ballito", latitude: widget.destinationLatLng.latitude, longitude: widget.destinationLatLng.longitude);
 
@@ -139,7 +145,9 @@ class _CustomFloatingActionButtonState extends State<CustomFloatingActionButton>
     wayPoints.add(origin);
     wayPoints.add(stop);
 
-    await _directions.startNavigation(wayPoints: wayPoints, options: _options,).then((val) => print("===================> REACHED DESTINATION " + val));
+    await _directions.startNavigation(wayPoints: wayPoints, options: _options,).then((val) => print("===================> REACHED DESTINATION " + val)).onError((error, stackTrace) {
+      print("================> ERROR OCCURRED WHILE NAVIGATING");
+    });
   }
 
   Future<Address> getUserAddress() async {//call this async method from whereever you need
