@@ -48,6 +48,9 @@ dependencies:
   scrollable_panel: ^0.4.1
   carousel_slider: ^4.0.0
   flutter_vector_icons: ^1.0.0
+  modal_bottom_sheet: ^2.0.0
+  flutter_rating_bar: ^4.0.0
+  accordion: ^1.0.4
 
 
   # The following adds the Cupertino Icons font to your application.

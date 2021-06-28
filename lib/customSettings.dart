@@ -48,6 +48,7 @@ class _CustomSettingsState extends State<CustomSettings> {
     super.initState();
     setState(() {
       Globals.showSpinner = true;
+      Globals.progressStatusMessage = "Fetching User\nData";
     });
     extractUserName().then((value) {
       Globals.usersName = value;
@@ -69,8 +70,22 @@ class _CustomSettingsState extends State<CustomSettings> {
   @override
   Widget build(BuildContext context) {
     if (Globals.showSpinner == true) {
-
-      return CircularProgressIndicator();
+      return Container(
+        width: double.infinity,
+        height: MediaQuery.of(context).size.height,
+        color: MyColors.darkTeal,
+        child: Center(
+          child: Wrap(
+            direction: Axis.vertical,
+            alignment: WrapAlignment.center,
+            children: [
+              Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+              SizedBox(height: MediaQuery.of(context).size.height * 0.1,),
+              Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
+            ],
+          ),
+        ),
+      );
     } else {
       double width = MediaQuery.of(context).size.width;
       double height = MediaQuery.of(context).size.height;
@@ -201,7 +216,7 @@ class _CustomSettingsState extends State<CustomSettings> {
                                                   Icons.done_outline_rounded),
                                               onTap: () {
                                                 usersRef.doc(
-                                                    getCurrentUserUID()).set(
+                                                    getCurrentUserUID()).update(
                                                     {
                                                       'displayName': nameTextField
                                                           .text,

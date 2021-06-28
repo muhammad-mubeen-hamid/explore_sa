@@ -75,7 +75,6 @@ class LoginScreen extends StatelessWidget {
           email: data.name,
           password: data.password
       );
-
       status = "User registered!";
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {

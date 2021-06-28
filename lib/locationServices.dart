@@ -1,11 +1,11 @@
 import 'dart:async';
-
+import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocode/geocode.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart' as GooglePlace;
-
+import 'package:http/http.dart' as http;
 import 'MyColors.dart';
 
 class LocationServices{
@@ -138,6 +138,18 @@ class LocationServices{
       print("'getNearbyPlaces()' ===================> NEARBY PLACES " + temp.length.toString());
     }
     return temp;
+  }
+
+  static Future<GooglePlace.DetailsResult?> processFavPlace(String placeId) async {
+
+    print("PROCESS_NEARBY_PLACES ======================================> CURRENT LAT LNG " + currentLatLng.latitude.toString() + " / " + currentLatLng.longitude.toString());
+    var googlePlace = GooglePlace.GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
+    GooglePlace.DetailsResponse? result = await googlePlace.details.get(placeId);
+
+    if (result != null) {
+      print("PROCESS_NEARBY_PLACES ======================================> RESULT FOUND");
+      return result.result;
+    }
   }
 
   static Future navigateToSelectedDestination(double lat, double lng) async {

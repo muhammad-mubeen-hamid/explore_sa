@@ -17,12 +17,6 @@ import 'package:flutter_mapbox_navigation/library.dart';
 
 import 'globals.dart';
 
-
-const users = const {
-  'dribbble@gmail.com': '12345',
-  'hunter@gmail.com': 'hunter',
-};
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -72,11 +66,9 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
 
   int _page = 0;
   late final CustomMap mapWidget;
-  final CustomPlaces places = CustomPlaces();
+  late final CustomPlaces places;
   final CustomSettings settings = CustomSettings();
   final CustomNavigation navigation = CustomNavigation();
-
-  late Widget _showPage = CustomSettings();
 
   Widget _pagePicker(int page){
     switch (page) {
@@ -98,7 +90,8 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   @override
   void initState(){
     super.initState();
-    mapWidget = CustomMap(stream: Globals.streamController.stream,);
+    mapWidget = CustomMap(stream: Globals.cusMapStreamController.stream,);
+    places = CustomPlaces(stream: Globals.cusPlacesStreamController.stream, changeViewToMap: changeViewToMap,);
     _directions = MapBoxNavigation();
   }
 
@@ -128,7 +121,7 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
           body: Center(
               child: Stack(
                 children: [
-                  _showPage,
+                  Globals.showPage,
                 ],
               )
           ));
@@ -138,10 +131,16 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
       );
     }
   }
-  
+
   changeView(int tappedIndex){
     setState(() {
-      _showPage = _pagePicker(tappedIndex);
+      Globals.showPage = _pagePicker(tappedIndex);
+    });
+  }
+
+  changeViewToMap(){
+    setState(() {
+      Globals.showPage = _pagePicker(1);
     });
   }
 

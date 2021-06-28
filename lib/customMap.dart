@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:explore_sa/customFloatingActionButton.dart';
 import 'package:explore_sa/globals.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -12,7 +15,6 @@ import 'application_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_panel/scrollable_panel.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-
 import 'locationServices.dart';
 
 class CustomMap extends StatefulWidget {
@@ -41,6 +43,11 @@ class _CustomMapState extends State<CustomMap> {
   List<GooglePlace.AutocompletePrediction> acp = [];
   final searchTextField = TextEditingController();
 
+  //user
+  FirebaseAuth auth = FirebaseAuth.instance;
+  CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
+  List<String> favLocations = [];
+
 
   @override
   void initState() {
@@ -62,6 +69,7 @@ class _CustomMapState extends State<CustomMap> {
         Globals.showSpinner = false;
       });
     });
+
     widget.stream.listen((latlng) {
       navigate(latlng);
     });
@@ -240,7 +248,7 @@ class _CustomMapState extends State<CustomMap> {
                                   endResult.result!.geometry!.location!.lng!);
                               final GoogleMapController controller = await _controller.future;
                               controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
-                                  )
+                              )
                               );
                               _panelController.close();
                               Globals.progressStatusMessage = "Calculating Route\nInformation";
@@ -325,13 +333,13 @@ class _CustomMapState extends State<CustomMap> {
           ),
         ),
         floatingActionButton: showFloatinActionButton ? CustomFloatingActionButton(
-            currentLatLng: LocationServices.currentLatLng,
-            destinationLatLng: LocationServices.destinationLatLng,
-            currentPositionFAB: _currentPositionFAB,
-            context: context,
-            polylineCoordinates: LocationServices.polineCoordinates,
-            resetMap: LocationServices.resetMap,
-            resetView: refreshViewF,
+          currentLatLng: LocationServices.currentLatLng,
+          destinationLatLng: LocationServices.destinationLatLng,
+          currentPositionFAB: _currentPositionFAB,
+          context: context,
+          polylineCoordinates: LocationServices.polineCoordinates,
+          resetMap: LocationServices.resetMap,
+          resetView: refreshViewF,
         ) : FloatingActionButton(onPressed: () => print(""), foregroundColor: MyColors.darkTeal, backgroundColor: MyColors.darkTeal,)
     );
   }
@@ -396,36 +404,46 @@ class _CustomMapState extends State<CustomMap> {
 }
 
 Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
+  String userPref = "All";
+  Globals.placeTypes.forEach((key, value) {
+    if (Globals.usersPref == key){
+      userPref = value;
+    }
+  });
 
   return Container(
       child: CarouselSlider(
         options: CarouselOptions(height: 170),
         items: nearbySearchResult.map((i) {
-            return Builder(
-              builder: (BuildContext context) {
-                return Container(
-                    margin: EdgeInsets.fromLTRB(10, 0, 10, 30),
-                    child: _boxes(
-                      "https://maps.googleapis.com/maps/api/place/photo?maxwidth=195&photoreference=${i.photos?.first.photoReference}&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
-                      i.name!,
-                      i.rating!,
-                      i.geometry?.location?.lat,
-                      i.geometry?.location?.lng,
-                    )
-                );
-              },
-            );
+          return Builder(
+            builder: (BuildContext context) {
+            //if (i.types?.contains(userPref) == true){
+            return Container(
+              margin: EdgeInsets.fromLTRB(10, 0, 10, 30),
+              child: _boxes(
+                  "https://maps.googleapis.com/maps/api/place/photo?maxwidth=195&photoreference=${i.photos?.first.photoReference}&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
+                  i.name!,
+                  i.rating!,
+                  i.geometry?.location?.lat,
+                  i.geometry?.location?.lng,
+                  i.types,
+                  i.placeId
+                )
+              );
+             }
+              // else {
+            //   return Container();
+            // }
+             // }
+              );
           }
         ).toList(),
       )
   );
 }
 
-Widget _boxes(String _image, String placeName, double rating, double? lat, double? lng) {
+Widget _boxes(String _image, String placeName, double rating, double? lat, double? lng, List<String>? types, String? placeId) {
   return  GestureDetector(
-    onTap: () async {
-      Globals.streamController.add(LatLng(lat!, lng!));
-    },
     child: Container(
       child: new FittedBox(
         child: Material(
@@ -446,8 +464,8 @@ Widget _boxes(String _image, String placeName, double rating, double? lat, doubl
                   ),),
                 Container(
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: myDetailsContainer1(placeName, rating),
+                    padding: const EdgeInsets.all(0),
+                    child: myDetailsContainer1(placeName, rating, types, lat, lng, placeId),
                   ),
                 ),
 
@@ -458,26 +476,61 @@ Widget _boxes(String _image, String placeName, double rating, double? lat, doubl
   );
 }
 
-Widget myDetailsContainer1(String placeName, double rating,) {
+Widget myDetailsContainer1(String placeName, double rating, List<String>? types, double? lat, double? lng, String? placeId) {
+  FirebaseAuth auth = FirebaseAuth.instance;
+  CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
+  List<String> fav = ["$placeId"];
   return Column(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: <Widget>[
+      Row(
+        children: [
+          GestureDetector(
+            child: Icon(Icons.favorite_border_rounded, size: 70, color: MyColors.darkTeal,),
+            onTap: () async {
+              DocumentSnapshot result;
+
+              await usersRef.doc(auth.currentUser?.uid).get().then((value) {
+                result = value;
+                try {
+                  List<dynamic> data = result.get('favLocations');
+                } catch (error){
+                  List<String> initialField = [];
+                  usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(initialField)});
+                } finally {
+                  usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(fav)});
+                }
+              });
+
+            },
+          ),
+          GestureDetector(
+            child: Container(
+                child: Icon(Icons.navigation_outlined, size: 70, color: MyColors.darkTeal,)
+            ),
+            onTap: () async {
+              Globals.cusMapStreamController.add(LatLng(lat!, lng!));
+            },
+          ),
+        ],
+      ),
+      SizedBox(height: 10,),
       Padding(
         padding: const EdgeInsets.only(left: 8.0),
         child: Container(
-          width: 250,
+            width: 250,
             child: Wrap(
               direction: Axis.horizontal,
               alignment: WrapAlignment.center,
               children: [
                 Text(
-                placeName,
-                style: TextStyle(
+                  placeName,
+                  style: TextStyle(
                     color: MyColors.darkTeal,
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,),
                   textAlign: TextAlign.center,
-              )],
+                )],
             )),
       ),
       SizedBox(height:5.0),
@@ -556,6 +609,7 @@ Widget myDetailsContainer1(String placeName, double rating,) {
                 fontSize: 18.0,
                 fontWeight: FontWeight.bold),
           )),
+
     ],
   );
 }
@@ -596,4 +650,3 @@ class _PanelViewState extends State<_PanelView> {
     );
   }
 }
-
