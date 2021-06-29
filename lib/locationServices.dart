@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart' as GooglePlace;
 import 'package:http/http.dart' as http;
 import 'MyColors.dart';
+import 'globals.dart';
 
 class LocationServices{
 
@@ -18,9 +19,6 @@ class LocationServices{
   //location declaration
   static LatLng currentLatLng = new LatLng(109, 109);
   static LatLng destinationLatLng = new LatLng(109, 109);
-
-  //nearby declaration
-  static List<GooglePlace.SearchResult> nearbySearchResult = [];
 
   //markers declaration
   static Set<Marker> markers = {};
@@ -201,7 +199,7 @@ class LocationServices{
   }
 
   static List<GooglePlace.SearchResult> getNearbySearchResult(){
-    return nearbySearchResult;
+    return Globals.nearbySearchResult;
   }
 
   static Future<LatLng> getCurrentLatLng() async {

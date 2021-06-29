@@ -22,8 +22,8 @@ void main() async {
   await Firebase.initializeApp();
   runApp(MaterialApp(
     theme: ThemeData(
-    primaryColor: MyColors.darkTeal,
-  ),
+      primaryColor: MyColors.darkTeal,
+    ),
     home: Main(),
   ));
 }
@@ -66,9 +66,9 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
 
   int _page = 0;
   late final CustomMap mapWidget;
-  late final CustomPlaces places;
-  final CustomSettings settings = CustomSettings();
-  final CustomNavigation navigation = CustomNavigation();
+  late CustomPlaces places;
+  CustomSettings settings = CustomSettings();
+  CustomNavigation navigation = CustomNavigation();
 
   Widget _pagePicker(int page){
     switch (page) {
@@ -90,6 +90,8 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
   @override
   void initState(){
     super.initState();
+    Globals.cusMapStreamController = StreamController.broadcast();
+    Globals.cusPlacesStreamController = StreamController.broadcast();
     mapWidget = CustomMap(stream: Globals.cusMapStreamController.stream,);
     places = CustomPlaces(stream: Globals.cusPlacesStreamController.stream, changeViewToMap: changeViewToMap,);
     _directions = MapBoxNavigation();
@@ -172,43 +174,4 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
 
     await _directions.startNavigation(wayPoints: wayPoints, options: _options);
   }
-
-  Future<void> _onRouteEvent(e) async {
-
-    double _distanceRemaining = await _directions.distanceRemaining;
-    double _durationRemaining = await _directions.durationRemaining;
-    bool? _routeBuilt, _isNavigating, _arrived;
-
-    switch (e.eventType) {
-      case MapBoxEvent.progress_change:
-        var progressEvent = e.data as RouteProgressEvent;
-        _arrived = progressEvent.arrived;
-        if (progressEvent.currentStepInstruction != null)
-         String? _instruction = progressEvent.currentStepInstruction;
-        break;
-      case MapBoxEvent.route_building:
-      case MapBoxEvent.route_built:
-        _routeBuilt = true;
-        break;
-      case MapBoxEvent.route_build_failed:
-        _routeBuilt = false;
-        break;
-      case MapBoxEvent.navigation_running:
-        _isNavigating = true;
-        break;
-      case MapBoxEvent.on_arrival:
-        _arrived = true;
-        break;
-      case MapBoxEvent.navigation_finished:
-      case MapBoxEvent.navigation_cancelled:
-        _routeBuilt = false;
-        _isNavigating = false;
-        break;
-      default:
-        break;
-    }
-    //refresh UI
-    setState(() {});
-  }
 }
-

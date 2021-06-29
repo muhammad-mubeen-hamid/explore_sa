@@ -42,16 +42,34 @@ class _CustomPlacesState extends State<CustomPlaces> {
     setState(() {
       Globals.showSpinner = true;
     });
-    getSavedFavs().then((value) {
-      value.forEach((element) {
+
+    LocationServices.processNearbyPlaces().then((value) {
+      Globals.nearbySearchResult = value;
+      //fav
+      getSavedFavs().then((value) {
+        value.forEach((element) {
         getFavPlacesDetailResult(element).then((value) {
-          Globals.favPlacesDetailResult.add(value);
-          if (favLocationIDs.length == Globals.favPlacesDetailResult.length){
+            Globals.favPlacesDetailResult.add(value);
+            if (favLocationIDs.length == Globals.favPlacesDetailResult.length){
+              //Globals.inFocusPlaceResult = value;
+              setState(() {
+                Globals.inFocusPlaceResult = value;
+                Globals.showSpinner = false;
+              });
+            }
+          });
+        });
+      });
+      //pref
+      getPrefPlaces().then((value) {
+        value.forEach((element) {
+          getPrefPlacesDetailResult(element!).then((value) {
             setState(() {
+              Globals.prefPlacesDetailResult.add(value);
               Globals.inFocusPlaceResult = value;
               Globals.showSpinner = false;
             });
-          }
+          });
         });
       });
     });
@@ -131,7 +149,8 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                                         i?.geometry?.location?.lat,
                                                         i?.geometry?.location?.lng,
                                                         i?.types,
-                                                        i?.placeId
+                                                        i?.placeId,
+                                                      i?.reviews?.length
                                                     ),
                                                   ),
                                                   Container(
@@ -186,9 +205,9 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                                         GestureDetector(
                                                           child: Container(child: Icon(Icons.info_outline_rounded, size: 32, color: MyColors.darkTeal,)),
                                                           onTap: () {
-                                                            Globals.lat = Globals.infoOfSelectedPlace?.geometry?.location?.lat;
-                                                            Globals.lng = Globals.infoOfSelectedPlace?.geometry?.location?.lng;
-                                                            Globals.infoOfSelectedPlace = i;
+                                                            Globals.lat = Globals.infoOfFavSelectedPlace?.geometry?.location?.lat;
+                                                            Globals.lng = Globals.infoOfFavSelectedPlace?.geometry?.location?.lng;
+                                                            Globals.infoOfFavSelectedPlace = i;
                                                             Globals.favPlacesImages = [];
                                                             Globals.reviewsOfSelectedPlace.clear();
                                                             Globals.favPlacesDetailResult.forEach((element1) {
@@ -198,15 +217,15 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                                                 });
                                                               }
                                                             });
-                                                            Globals.infoOfSelectedPlace?.reviews?.forEach((element) {
+                                                            Globals.infoOfFavSelectedPlace?.reviews?.forEach((element) {
                                                               Globals.reviewsOfSelectedPlace.add(element);
                                                             });
 
                                                             showMaterialModalBottomSheet(context: context, builder: (context){
                                                               return PlaceInfo(placeId: i?.placeId,);
                                                             },
-                                                              bounce: true,
-                                                              duration: Duration(seconds: 1));
+                                                                bounce: true,
+                                                                duration: Duration(seconds: 1));
                                                             //Globals.streamController.add(LatLng(lat!, lng!));
                                                           },
                                                         ),
@@ -222,6 +241,7 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                     )
                                 )],
                             ),
+                            //PREFERENCES
                             Container(
                               margin: EdgeInsets.fromLTRB(0, height * 0.08, 0, 0),
                               width: width * 0.9,
@@ -242,18 +262,107 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                     height: height * 0.3,
                                     child: CarouselSlider(
                                       options: CarouselOptions(height: height * 0.3),
-                                      items: favLocationIDs.map((i) {
-                                        return Container(
-                                          margin: EdgeInsets.fromLTRB(0, height * 0.08, 0, 0),
-                                          width: width * 0.9,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(10),
-                                            color: MyColors.xLightTeal,
-                                          ),
-                                          child: Container(
-                                              margin: EdgeInsets.symmetric(horizontal: 0, vertical: height * 0.01),
-                                              child: Text("Preferences", textAlign: TextAlign.center, style: TextStyle(color: MyColors.darkTeal, fontSize: 16, fontWeight: FontWeight.bold),)
-                                          ),
+                                      items: Globals.prefPlacesDetailResult.map((i) {
+                                        return Builder(
+                                            builder: (BuildContext context) {
+                                              return Column(
+                                                children: [
+                                                  Container(
+                                                    margin: EdgeInsets.fromLTRB(10, 0, 10, 10),
+                                                    child: _boxes(
+                                                        "https://maps.googleapis.com/maps/api/place/photo?maxwidth=195&photoreference=${i?.photos?.first.photoReference}&key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI",
+                                                        i?.name,
+                                                        i?.rating,
+                                                        i?.geometry?.location?.lat,
+                                                        i?.geometry?.location?.lng,
+                                                        i?.types,
+                                                        i?.placeId,
+                                                      i?.reviews?.length
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(10),
+                                                      color: MyColors.xLightTeal,
+                                                    ),
+                                                    width: width * 0.9,
+                                                    height: height * 0.06,
+                                                    margin: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                      children: [
+                                                        GestureDetector(
+                                                          child: Icon(Icons.favorite_rounded, size: 32, color: MyColors.darkTeal,),
+                                                          onTap: () async {
+                                                            DocumentSnapshot result;
+
+                                                            await usersRef.doc(auth.currentUser?.uid).get().then((value) {
+                                                              result = value;
+                                                              try {
+                                                                List<dynamic> data = result.get('favLocations');
+                                                              } catch (error){
+                                                                List<String> initialField = [];
+                                                                usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(initialField)});
+                                                              } finally {
+                                                                //usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(fav)});
+                                                              }
+                                                            });
+
+                                                          },
+                                                        ),
+                                                        Padding(
+                                                          padding: const EdgeInsets.only(left: 8.0),
+                                                          child: Container(
+                                                              width: width * 0.35,
+                                                              child: Wrap(
+                                                                crossAxisAlignment: WrapCrossAlignment.center,
+                                                                direction: Axis.horizontal,
+                                                                alignment: WrapAlignment.center,
+                                                                children: [
+                                                                  Text(
+                                                                    "${i?.name}",
+                                                                    style: TextStyle(
+                                                                      color: MyColors.darkTeal,
+                                                                      fontSize: 12.0,
+                                                                      fontWeight: FontWeight.bold,),
+                                                                    textAlign: TextAlign.center,
+                                                                  )],
+                                                              )),
+                                                        ),
+                                                        GestureDetector(
+                                                          child: Container(child: Icon(Icons.info_outline_rounded, size: 32, color: MyColors.darkTeal,)),
+                                                          onTap: () {
+                                                            Globals.lat = Globals.infoOfFavSelectedPlace?.geometry?.location?.lat;
+                                                            Globals.lng = Globals.infoOfFavSelectedPlace?.geometry?.location?.lng;
+                                                            Globals.infoOfFavSelectedPlace = i;
+                                                            Globals.favPlacesImages = [];
+                                                            Globals.reviewsOfSelectedPlace.clear();
+                                                            Globals.prefPlacesDetailResult.forEach((element1) {
+                                                              if (element1?.placeId == i?.placeId) {
+                                                                element1?.photos?.forEach((element2) {
+                                                                  Globals.favPlacesImages.add(element2.photoReference);
+                                                                });
+                                                              }
+                                                            });
+                                                            Globals.infoOfFavSelectedPlace?.reviews?.forEach((element) {
+                                                              Globals.reviewsOfSelectedPlace.add(element);
+                                                            });
+
+                                                            showMaterialModalBottomSheet(context: context, builder: (context){
+                                                              return PlaceInfo(placeId: i?.placeId,);
+                                                            },
+                                                                bounce: true,
+                                                                duration: Duration(seconds: 1));
+                                                            //Globals.streamController.add(LatLng(lat!, lng!));
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    padding: EdgeInsets.symmetric(vertical: 0, horizontal: width * 0.05),
+                                                  ),
+                                                ],
+                                              );
+                                            }
                                         );
                                       }).toList(),
                                     )
@@ -272,24 +381,21 @@ class _CustomPlacesState extends State<CustomPlaces> {
   }
 
   Future<GooglePlace.DetailsResult?> getFavPlacesDetailResult(String placeId) async {
-    print("================================> INSIDE GET_FAV_PLACES_DETAIL_RESULT");
     var googlePlace = GooglePlace.GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
     GooglePlace.DetailsResponse? result = await googlePlace.details.get(placeId);
     print("PROCESS_NEARBY_PLACES ======================================> RESULT FOUND ${result?.result?.name}");
     return result?.result;
   }
 
-  //for a specific place
-  Future<Place> getPlaceDetails(String? placeID) async {
-    http.Response result;
-    result = await http.get(Uri.parse("https://maps.googleapis.com/maps/api/place/details/json?key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI&place_id=$placeID"));
-    print(result.body);
-    return Place.fromJson(jsonDecode(result.body));
+  Future<GooglePlace.DetailsResult?> getPrefPlacesDetailResult(String placeId) async {
+    var googlePlace = GooglePlace.GooglePlace("AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI");
+    GooglePlace.DetailsResponse? result = await googlePlace.details.get(placeId);
+    print("PROCESS_NEARBY_PLACES ======================================> RESULT FOUND ${result?.result?.name}");
+    return result?.result;
   }
 
   //extract fav IDs
   Future<List<String>> getSavedFavs() async {
-    print("IN GET_SAVED_FAVS");
     DocumentSnapshot result;
     List<String> fav = [];
     await usersRef.doc(auth.currentUser?.uid).get().then((value) {
@@ -311,7 +417,36 @@ class _CustomPlacesState extends State<CustomPlaces> {
     return fav;
   }
 
-  Widget _boxes(String? _image, String? placeName, double? rating, double? lat, double? lng, List<String>? types, String? placeId) {
+  //for a specific preference
+  Future<List<String?>> getPrefPlaces() async {
+    List<String?> prefIDs = [];
+
+    Globals.nearbySearchResult.forEach((element) {
+      if (element.types?.contains(Globals.usersPrefValue) == true){
+        print("########################################## PREFERRED PLACE FOUND ${element.types}");
+        prefIDs.add(element.placeId);
+      }
+    });
+    return prefIDs;
+  }
+
+  //for a specific place
+  Future<Place> getPlaceDetails(String? placeID) async {
+    http.Response result;
+    result = await http.get(Uri.parse("https://maps.googleapis.com/maps/api/place/details/json?key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI&place_id=$placeID"));
+    print(result.body);
+    return Place.fromJson(jsonDecode(result.body));
+  }
+
+  //for a specific place
+  Future<Place> getPreferredPlaces(String? placeID) async {
+    http.Response result;
+    result = await http.get(Uri.parse("https://maps.googleapis.com/maps/api/place/details/json?key=AIzaSyB0POtgaIRmp1NhRH3PGPcQ14Uo6MQ1OJI&place_id=$placeID"));
+    print(result.body);
+    return Place.fromJson(jsonDecode(result.body));
+  }
+
+  Widget _boxes(String? _image, String? placeName, double? rating, double? lat, double? lng, List<String>? types, String? placeId, int? reviewCount) {
     return  GestureDetector(
       child: Container(
         child: new FittedBox(
@@ -336,7 +471,7 @@ class _CustomPlacesState extends State<CustomPlaces> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(0),
-                          child: myDetailsContainer1(placeName!, rating!, types, lat, lng, placeId),
+                          child: myDetailsContainer1(placeName!, rating!, types, lat, lng, placeId, reviewCount),
                         ),
                       ],
                     )
@@ -349,7 +484,7 @@ class _CustomPlacesState extends State<CustomPlaces> {
     );
   }
 
-  Widget myDetailsContainer1(String placeName, double rating, List<String>? types, double? lat, double? lng, String? placeId) {
+  Widget myDetailsContainer1(String placeName, double rating, List<String>? types, double? lat, double? lng, String? placeId, int? reviewCount) {
     FirebaseAuth auth = FirebaseAuth.instance;
     CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
     List<String> fav = ["$placeId"];
@@ -425,7 +560,7 @@ class _CustomPlacesState extends State<CustomPlaces> {
                 ),
                 Container(
                     child: Text(
-                      "(946)",
+                      "($reviewCount)",
                       style: TextStyle(
                         color: MyColors.darkTeal,
                         fontSize: 18.0,
@@ -473,11 +608,12 @@ class _CustomPlacesState extends State<CustomPlaces> {
 
     await LocationServices.setPolylines().then((value) {
       setState(() {
-        widget.changeViewToMap();
         //Globals.showPage = CustomMap(stream: Globals.cusMapStreamController.stream);
         val = !val;
         Globals.showSpinner = false;
+        widget.changeViewToMap();
       });
+
     });
   }
 }
@@ -521,7 +657,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
                         alignment: WrapAlignment.start,
                         children: [
                           Text(
-                            "${Globals.infoOfSelectedPlace?.name}",
+                            "${Globals.infoOfFavSelectedPlace?.name}",
                             style: TextStyle(
                               color: MyColors.darkTeal,
                               fontSize: 18.0,
@@ -547,8 +683,8 @@ class _PlaceInfoState extends State<PlaceInfo> {
                     )
                 ),
                 onTap: () async {
-                  double? lat = Globals.infoOfSelectedPlace?.geometry?.location?.lat;
-                  double? lng = Globals.infoOfSelectedPlace?.geometry?.location?.lng;
+                  double? lat = Globals.infoOfFavSelectedPlace?.geometry?.location?.lat;
+                  double? lng = Globals.infoOfFavSelectedPlace?.geometry?.location?.lng;
                   Globals.cusPlacesStreamController.add(
                       LatLng(lat!, lng!)
                   );
@@ -562,7 +698,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
             Container(
               margin: EdgeInsets.fromLTRB(10, 0, 0, 0),
               child: Text(
-                  "${Globals.infoOfSelectedPlace?.openingHours?.openNow == true ? "Open Now": "Closed"}",
+                  "${Globals.infoOfFavSelectedPlace?.openingHours?.openNow == true ? "Open Now": "Closed"}",
                   style: TextStyle(color: MyColors.darkTeal),
               ),
             ),
@@ -571,7 +707,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
             children: [
               Container(
                 margin: EdgeInsets.fromLTRB(10, 0, 0, 0),
-                child: Text("${Globals.infoOfSelectedPlace?.rating}", style: TextStyle(color: MyColors.darkTeal)),
+                child: Text("${Globals.infoOfFavSelectedPlace?.rating}", style: TextStyle(color: MyColors.darkTeal)),
               ),
               Container(
                 child: RatingBar.builder(
@@ -594,7 +730,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
               ),
               Container(
                   margin: EdgeInsets.fromLTRB(0, 0, 10, 0),
-                  child: Text(" (${Globals.infoOfSelectedPlace?.userRatingsTotal})",
+                  child: Text(" (${Globals.infoOfFavSelectedPlace?.userRatingsTotal})",
                     style: TextStyle(color: MyColors.darkTeal),
                   )
               ),
@@ -605,11 +741,23 @@ class _PlaceInfoState extends State<PlaceInfo> {
             children: [
               Container(
                 width: width,
-
                 child: CarouselSlider.builder(
                   itemCount: Globals.favPlacesImages.length,
                   itemBuilder: (BuildContext context, int itemIndex, int pageViewIndex) =>
-                      ClipRRect(
+                        Globals.favPlacesImages.length == 0 ? Container(
+                            child:
+                            Row(
+                              children: [
+                                Icon(Icons.error, color: Colors.red,),
+                                Text(" No Images Found", style: TextStyle(color: MyColors.xLightTeal),),
+                              ],
+                            ),
+                            decoration: BoxDecoration(
+                              color: MyColors.darkTeal
+                            ),
+                          padding: EdgeInsets.symmetric(vertical: 60, horizontal: 80),
+                        ):
+                        ClipRRect(
                         borderRadius: new BorderRadius.circular(10),
                           child: Image(
                             fit: BoxFit.fill,
@@ -659,7 +807,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.title_rounded),
-                            Text(" ${Globals.infoOfSelectedPlace?.name}"),
+                            Text(" ${Globals.infoOfFavSelectedPlace?.name}"),
                           ],
                         ),
                         Divider(height: 10,),
@@ -675,7 +823,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
                                   alignment: WrapAlignment.center,
                                   children: [
                                     Text(
-                                      " ${Globals.infoOfSelectedPlace?.formattedAddress}",
+                                      " ${Globals.infoOfFavSelectedPlace?.formattedAddress}",
                                       style: TextStyle(
                                         color: MyColors.darkTeal,
                                       ),
@@ -689,7 +837,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.phone),
-                            Text(" ${Globals.infoOfSelectedPlace?.formattedPhoneNumber}"),
+                            Text(" ${Globals.infoOfFavSelectedPlace?.formattedPhoneNumber}"),
                           ],
                         ),
                         Divider(height: 10,),
@@ -697,7 +845,7 @@ class _PlaceInfoState extends State<PlaceInfo> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.work),
-                            Text(" ${Globals.infoOfSelectedPlace?.businessStatus}"),
+                            Text(" ${Globals.infoOfFavSelectedPlace?.businessStatus}"),
                           ],
                         ),
                       ],

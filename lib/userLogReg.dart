@@ -74,7 +74,18 @@ class LoginScreen extends StatelessWidget {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: data.name,
           password: data.password
-      );
+      ).then((value) {
+        usersRef.doc(value.user?.uid).set(
+            {
+              'displayName': "Name",
+              'uid': value.user?.uid,
+              'locationPref': 'food',
+              'measureSystem': 'Kilometers',
+              'favLocations': ''
+            }
+        ).catchError((onError) =>
+            print(onError));
+      });
       status = "User registered!";
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {

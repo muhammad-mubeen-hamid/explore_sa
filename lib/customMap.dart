@@ -6,7 +6,9 @@ import 'package:explore_sa/globals.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart' as GooglePlace;
@@ -15,6 +17,8 @@ import 'application_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_panel/scrollable_panel.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'customPlaces.dart';
+import 'customSettings.dart';
 import 'locationServices.dart';
 
 class CustomMap extends StatefulWidget {
@@ -64,7 +68,7 @@ class _CustomMapState extends State<CustomMap> {
       Globals.progressStatusMessage = "Locating \nNearby Preferences";
     });
     LocationServices.processNearbyPlaces().then((value) {
-      LocationServices.nearbySearchResult = value;
+      Globals.nearbySearchResult = value;
       setState(() {
         Globals.showSpinner = false;
       });
@@ -81,267 +85,276 @@ class _CustomMapState extends State<CustomMap> {
 
     return Scaffold(
         body: Container(
-          child: Globals.showSpinner ? Container(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            color: MyColors.darkTeal,
-            child: Center(
-              child: Wrap(
-                direction: Axis.vertical,
-                alignment: WrapAlignment.center,
-                children: [
-                  Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
-                  SizedBox(height: size.height * 0.1,),
-                  Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
-                ],
-              ),
-            ),
-          ):
-          Stack(
-            children: [
-              LocationServices.currentLatLng == new LatLng(109, 109) ?
-              Center(child: Container(
-                width: double.infinity,
-                height: MediaQuery.of(context).size.height,
-                color: MyColors.darkTeal,
-                child: Center(
-                  child: Wrap(
-                    direction: Axis.vertical,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
-                      SizedBox(height: size.height * 0.1,),
-                      Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
-                    ],
+          child: Scaffold(
+              body: Container(
+                child: Globals.showSpinner ? Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height,
+                  color: MyColors.darkTeal,
+                  child: Center(
+                    child: Wrap(
+                      direction: Axis.vertical,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+                        SizedBox(height: size.height * 0.1,),
+                        Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
+                      ],
+                    ),
                   ),
-                ),
-              )
-              ) :
-              Container(
-                child: GoogleMap(
-                  markers: LocationServices.markers.length <= 2 ? Set<Marker>.from(LocationServices.markers) : Set<Marker>.from(LocationServices.multipleMarkers),
-                  polylines: LocationServices.getPolylines(),
-                  trafficEnabled: false,
-                  rotateGesturesEnabled: true,
-                  buildingsEnabled: true,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  mapType: MapType.normal,
-                  zoomControlsEnabled: false,
-                  initialCameraPosition: CameraPosition(target: LocationServices.currentLatLng, zoom: 15),
-                  onMapCreated: (GoogleMapController controller) {
-                    _controller.complete(controller);
-                    LocationServices.setPolylines();
-                  },
-                ),
-              ),
-              Container(
-                width: size.width * 1,
-                padding: EdgeInsets.symmetric(
-                    horizontal: size.width * 0.04, vertical: size.height * 0.01),
-                margin: EdgeInsets.symmetric(
-                    vertical: size.height * 0.07, horizontal: size.width * 0.04),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20)
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ):
+                Stack(
                   children: [
-                    Icon(Icons.search),
-                    Container(
-                      width: size.width * 0.7,
-                      decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(
-                              color: MyColors.darkTeal))
-                      ),
-                      child: TextField(
-                          controller: searchTextField,
-                          decoration: InputDecoration(
-                              hintText: "Search for destination",
-                              hintStyle: TextStyle(
-                                  color: Colors.grey),
-                              border: InputBorder.none
-                          ),
-                          onChanged: (value) async {
-                            result =
-                            await googlePlace.autocomplete.get(
-                                value, radius: 0);
-                            setState(() {
-                              appBloc.searchPlace(value);
-                              acp = result.predictions.toList();
-                            });
-                          }
-                      ),
-                    ),
-                    Icon(Icons.settings)
-                  ],
-                ),
-              ),
-              Container(
-                margin: EdgeInsets.fromLTRB(size.width * 0.05, size.width * 0.3, 0, 0),
-                width: size.width * 0.8,
-                child: Row(
-                  children: [
-                    GestureDetector(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: MyColors.darkTeal,
-                            ),
-                            borderRadius: BorderRadius.all(Radius.circular(20)),
-                            color: MyColors.xLightTeal,
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
-                          child: Row(
-                            children: [
-                              Icon(Icons.restaurant_rounded, color: MyColors.darkTeal, size: 18,), Text(" Restaurants", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
-                            ],
-                          ),
+                    LocationServices.currentLatLng == new LatLng(109, 109) ?
+                    Center(child: Container(
+                      width: double.infinity,
+                      height: MediaQuery.of(context).size.height,
+                      color: MyColors.darkTeal,
+                      child: Center(
+                        child: Wrap(
+                          direction: Axis.vertical,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+                            SizedBox(height: size.height * 0.1,),
+                            Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
+                          ],
                         ),
-                        onTap: () async {
-                          _panelController.open();
-                          LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
-                          //nearbySearchResult = await this.getNearbyPlaces().then((value) => value);
-                          getPhoto();
-                        }
-                    ),
-                    SizedBox(width: 5,),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: MyColors.darkTeal,
-                        ),
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        color: MyColors.xLightTeal,
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
-                      child: Row(
-                        children: [
-                          Icon(Icons.shopping_cart_outlined, color: MyColors.darkTeal, size: 18,), Text(" Groceries", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
-                        ],
                       ),
                     )
+                    ) :
+                    Container(
+                      child: GoogleMap(
+                        markers: LocationServices.markers.length <= 2 ? Set<Marker>.from(LocationServices.markers) : Set<Marker>.from(LocationServices.multipleMarkers),
+                        polylines: LocationServices.getPolylines(),
+                        trafficEnabled: false,
+                        rotateGesturesEnabled: true,
+                        buildingsEnabled: true,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        mapType: MapType.normal,
+                        zoomControlsEnabled: false,
+                        initialCameraPosition: CameraPosition(target: LocationServices.currentLatLng, zoom: 15),
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller.complete(controller);
+                          LocationServices.setPolylines();
+                        },
+                      ),
+                    ),
+                    Container(
+                      width: size.width * 1,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: size.width * 0.04, vertical: size.height * 0.01),
+                      margin: EdgeInsets.symmetric(
+                          vertical: size.height * 0.07, horizontal: size.width * 0.04),
+                      decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20)
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          GestureDetector(
+                            child: Icon(AntDesign.menu_unfold),
+                            onTap: () {
+                            },
+                          ),
+                          Container(
+                            width: size.width * 0.65,
+                            decoration: BoxDecoration(
+                                border: Border(bottom: BorderSide(
+                                    color: MyColors.darkTeal))
+                            ),
+                            child: TextField(
+                                controller: searchTextField,
+                                decoration: InputDecoration(
+                                    hintText: "Search for destination",
+                                    hintStyle: TextStyle(
+                                        color: Colors.grey),
+                                    border: InputBorder.none
+                                ),
+                                onChanged: (value) async {
+                                  result = await googlePlace.autocomplete.get(value, radius: 0);
+                                  setState(() {
+                                    appBloc.searchPlace(value);
+                                    acp = result.predictions.toList();
+                                  });
+                                }
+                            ),
+                          ),
+                          Icon(AntDesign.search1)
+                        ],
+                      ),
+                    ),
+                    Container(
+                      margin: EdgeInsets.fromLTRB(size.width * 0.05, size.width * 0.3, 0, 0),
+                      width: size.width * 0.8,
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: MyColors.darkTeal,
+                                  ),
+                                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                                  color: MyColors.xLightTeal,
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.restaurant_rounded, color: MyColors.darkTeal, size: 18,), Text(" Restaurants", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                  ],
+                                ),
+                              ),
+                              onTap: () async {
+                                _panelController.open();
+                                LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                //nearbySearchResult = await this.getNearbyPlaces().then((value) => value);
+                                getPhoto();
+                              }
+                          ),
+                          SizedBox(width: 5,),
+                          GestureDetector(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: MyColors.darkTeal,
+                                ),
+                                borderRadius: BorderRadius.all(Radius.circular(20)),
+                                color: MyColors.xLightTeal,
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.shopping_cart_outlined, color: MyColors.darkTeal, size: 18,), Text(" Groceries", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                ],
+                              ),
+                            ),
+                            onTap: () {
+                            },
+                          )
+                        ],
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Container(height: size.height * 0.08,),
+                        acp.isEmpty || acp.length == 0
+                            ? Container()
+                            : Container(
+                          margin: EdgeInsets.fromLTRB(0, size.height * 0.05, 0, 0),
+                          height: size.height * 0.5,
+                          child: ListView.builder(
+                              itemBuilder: (context, index) {
+                                return GestureDetector(
+                                  onTap: () async {
+                                    //LocationServices.resetMap();
+                                    GooglePlace.DetailsResponse? endResult = await googlePlace
+                                        .details.get(acp[index].placeId!);
+                                    GooglePlace.DetailsResponse? startResult = await googlePlace
+                                        .details.get(acp[index].placeId!);
+                                    LatLng targetLatLng = LocationServices.destinationLatLng = new LatLng(
+                                        endResult!.result!.geometry!.location!.lat!,
+                                        endResult.result!.geometry!.location!.lng!);
+                                    final GoogleMapController controller = await _controller.future;
+                                    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
+                                    )
+                                    );
+                                    _panelController.close();
+                                    Globals.progressStatusMessage = "Calculating Route\nInformation";
+                                    LocationServices.destinationLatLng = targetLatLng;
+                                    setState(() {
+                                      Globals.showSpinner = true;
+                                    });
 
+                                    await LocationServices.addMarkers(LocationServices.currentLatLng, LocationServices.destinationLatLng).then((value) {
+                                      setState(() {
+                                        searchTextField.text = "";
+                                        acp = [];
+                                        setState(() {
+                                          Globals.showSpinner = false;
+                                        });
+                                      });
+                                    });
+                                    await LocationServices.setPolylines().then((value) {
+                                      setState(() {
+                                        searchTextField.text = "";
+                                        acp = [];
+                                        showFloatinActionButton = true;
+                                        Globals.showSpinner = false;
+                                      });
+                                    });
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Container(
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.location_on),
+                                                Container(
+                                                    width: size.width * 0.7,
+                                                    child: Text("  " + acp[index].description!,)
+                                                )
+                                              ]
+                                              ,),
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 20,
+                                                vertical: 20),
+                                            margin: EdgeInsets.symmetric(
+                                                vertical: 2,
+                                                horizontal: 20),
+                                            decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius
+                                                    .circular(20)
+                                            )
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                );
+                              }, itemCount: acp.length),
+                        ),
+                      ],
+                    ),
+                    ScrollablePanel(
+                      controller: _panelController,
+                      defaultPanelState: PanelState.close,
+                      onOpen: () => {
+                        setState(() {
+                          showFloatinActionButton = false;
+                        })
+                      },
+                      onClose: () => {
+                        setState(() {
+                          showFloatinActionButton = true;
+                        })
+                      },
+                      onExpand: () => print("Panel has been expanded"),
+                      builder: (context, controller) {
+                        return SingleChildScrollView(
+                          controller: controller,
+                          child: _PanelView(nearbySearchResult: LocationServices.getNearbySearchResult()),
+                        );
+                      },
+                    )
                   ],
                 ),
               ),
-              Column(
-                children: [
-                  Container(height: size.height * 0.08,),
-                  acp.isEmpty || acp.length == 0
-                      ? Container()
-                      : Container(
-                    margin: EdgeInsets.fromLTRB(0, size.height * 0.05, 0, 0),
-                    height: size.height * 0.5,
-                    child: ListView.builder(
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () async {
-                              //LocationServices.resetMap();
-                              GooglePlace.DetailsResponse? endResult = await googlePlace
-                                  .details.get(acp[index].placeId!);
-                              GooglePlace.DetailsResponse? startResult = await googlePlace
-                                  .details.get(acp[index].placeId!);
-                              LatLng targetLatLng = LocationServices.destinationLatLng = new LatLng(
-                                  endResult!.result!.geometry!.location!.lat!,
-                                  endResult.result!.geometry!.location!.lng!);
-                              final GoogleMapController controller = await _controller.future;
-                              controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
-                              )
-                              );
-                              _panelController.close();
-                              Globals.progressStatusMessage = "Calculating Route\nInformation";
-                              LocationServices.destinationLatLng = targetLatLng;
-                              setState(() {
-                                Globals.showSpinner = true;
-                              });
-
-                              await LocationServices.addMarkers(LocationServices.currentLatLng, LocationServices.destinationLatLng).then((value) {
-                                setState(() {
-                                  searchTextField.text = "";
-                                  acp = [];
-                                  setState(() {
-                                    Globals.showSpinner = false;
-                                  });
-                                });
-                              });
-                              await LocationServices.setPolylines().then((value) {
-                                setState(() {
-                                  searchTextField.text = "";
-                                  acp = [];
-                                  showFloatinActionButton = true;
-                                  Globals.showSpinner = false;
-                                });
-                              });
-                            },
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.location_on),
-                                          Container(
-                                              width: size.width * 0.7,
-                                              child: Text("  " + acp[index].description!,)
-                                          )
-                                        ]
-                                        ,),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 20),
-                                      margin: EdgeInsets.symmetric(
-                                          vertical: 2,
-                                          horizontal: 20),
-                                      decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius
-                                              .circular(20)
-                                      )
-                                  ),
-                                )
-                              ],
-                            ),
-                          );
-                        }, itemCount: acp.length),
-                  ),
-                ],
-              ),
-              ScrollablePanel(
-                controller: _panelController,
-                defaultPanelState: PanelState.close,
-                onOpen: () => {
-                  setState(() {
-                    showFloatinActionButton = false;
-                  })
-                },
-                onClose: () => {
-                  setState(() {
-                    showFloatinActionButton = true;
-                  })
-                },
-                onExpand: () => print("Panel has been expanded"),
-                builder: (context, controller) {
-                  return SingleChildScrollView(
-                    controller: controller,
-                    child: _PanelView(nearbySearchResult: LocationServices.getNearbySearchResult()),
-                  );
-                },
-              )
-            ],
+              floatingActionButton: showFloatinActionButton ? CustomFloatingActionButton(
+                currentLatLng: LocationServices.currentLatLng,
+                destinationLatLng: LocationServices.destinationLatLng,
+                currentPositionFAB: _currentPositionFAB,
+                context: context,
+                polylineCoordinates: LocationServices.polineCoordinates,
+                resetMap: LocationServices.resetMap,
+                resetView: refreshViewF,
+              ) : FloatingActionButton(onPressed: () => print(""), foregroundColor: MyColors.darkTeal, backgroundColor: MyColors.darkTeal,)
           ),
         ),
-        floatingActionButton: showFloatinActionButton ? CustomFloatingActionButton(
-          currentLatLng: LocationServices.currentLatLng,
-          destinationLatLng: LocationServices.destinationLatLng,
-          currentPositionFAB: _currentPositionFAB,
-          context: context,
-          polylineCoordinates: LocationServices.polineCoordinates,
-          resetMap: LocationServices.resetMap,
-          resetView: refreshViewF,
-        ) : FloatingActionButton(onPressed: () => print(""), foregroundColor: MyColors.darkTeal, backgroundColor: MyColors.darkTeal,)
-    );
+      );
   }
 
   Future<void> _currentPositionFAB() async {
@@ -406,7 +419,7 @@ class _CustomMapState extends State<CustomMap> {
 Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
   String userPref = "All";
   Globals.placeTypes.forEach((key, value) {
-    if (Globals.usersPref == key){
+    if (Globals.usersPrefValue == key){
       userPref = value;
     }
   });

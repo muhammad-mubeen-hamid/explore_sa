@@ -6,9 +6,12 @@ import 'package:explore_sa/globals.dart';
 import 'package:explore_sa/services/authService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:scrollable_panel/scrollable_panel.dart';
 
+import 'customMap.dart';
+import 'customPlaces.dart';
 import 'locationServices.dart';
 
 //----------------------------------_> Figure out how to add user data when signing up
@@ -54,364 +57,318 @@ class _CustomSettingsState extends State<CustomSettings> {
       Globals.usersName = value;
     });
     extractUserPref().then((value) {
-      Globals.usersPref = value;
+      Globals.usersPrefValue = value;
     });
     extractUserMetric().then((value) {
       Globals.measureSystem = value;
     });
     LocationServices.getCurrentLatLng().then((value) => {
       print("WE FOUND LOCATION ON LOGIN ==================> ${value.latitude}/${value.longitude}"),
-      setState(() {
-      Globals.showSpinner = false;
-      })
+      setState(() {Globals.showSpinner = false;})
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (Globals.showSpinner == true) {
-      return Container(
-        width: double.infinity,
-        height: MediaQuery.of(context).size.height,
-        color: MyColors.darkTeal,
-        child: Center(
-          child: Wrap(
-            direction: Axis.vertical,
-            alignment: WrapAlignment.center,
-            children: [
-              Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
-              SizedBox(height: MediaQuery.of(context).size.height * 0.1,),
-              Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
-            ],
-          ),
-        ),
-      );
-    } else {
       double width = MediaQuery.of(context).size.width;
       double height = MediaQuery.of(context).size.height;
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            color: MyColors.darkTeal,
-          ),
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SingleChildScrollView(
-              physics: BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 50),
-                child: Column(
+      return Container(
+            child: Globals.showSpinner ?
+            Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height,
+              color: MyColors.darkTeal,
+              child: Center(
+                child: Wrap(
+                  direction: Axis.vertical,
+                  alignment: WrapAlignment.center,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Icon(
-                          AntDesign.arrowleft,
-                          color: MyColors.darkTeal,
-                        ),
-                        GestureDetector(
-                          child: Icon(
-                            AntDesign.logout,
-                            color: MyColors.xLightTeal,
-                          ),
-                          onTap: () {
-                            setState(() {
-                              Globals.showSpinner = true;
-                            });
-                            AuthService authService = new AuthService(auth);
-                            authService.signOut();
-                          },
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'Profile',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                      ),
-                    ),
-                    SizedBox(
-                      height: 20,
-                    ),
-                    Container(
-                      height: height * 0.40,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          double innerHeight = constraints.maxHeight;
-                          double innerWidth = constraints.maxWidth;
-                          return Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Positioned(
-                                child: Container(
-                                  margin: EdgeInsets.fromLTRB(
-                                      0, height * 0.08, 0, 0),
-                                  height: innerHeight * 0.50,
-                                  width: innerWidth,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(30),
-                                    color: MyColors.xLightTeal,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      SizedBox(
-                                        height: 45,
-                                      ),
-                                      Flexible(
-                                        child: Text(
-                                          '${Globals.usersName}',
-                                          style: TextStyle(
-                                              color: MyColors.darkTeal,
-                                              fontFamily: 'Nunito',
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: width * 0.8,
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: width * 0.04,
-                                            vertical: height * 0.01),
-                                        margin: EdgeInsets.symmetric(
-                                            vertical: height * 0.07,
-                                            horizontal: width * 0.01),
-                                        decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                                20)
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment
-                                              .spaceBetween,
-                                          children: [
-                                            Icon(Icons
-                                                .drive_file_rename_outline),
-                                            Container(
-                                              width: width * 0.55,
-                                              decoration: BoxDecoration(
-                                                  border: Border(
-                                                      bottom: BorderSide(
-                                                          color: MyColors
-                                                              .darkTeal))
-                                              ),
-                                              child: TextField(
-                                                controller: nameTextField,
-                                                decoration: InputDecoration(
-                                                    hintText: '${Globals
-                                                        .usersName}',
-                                                    hintStyle: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey),
-                                                    border: InputBorder.none
-                                                ),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              child: Icon(
-                                                  Icons.done_outline_rounded),
-                                              onTap: () {
-                                                usersRef.doc(
-                                                    getCurrentUserUID()).update(
-                                                    {
-                                                      'displayName': nameTextField
-                                                          .text,
-                                                      'uid': getCurrentUserUID()
-                                                    }
-                                                ).catchError((onError) =>
-                                                    print(onError));
-
-                                                setState(() {
-                                                  changeDisplayName();
-                                                  extractUserName();
-                                                  nameTextField.clear();
-                                                });
-                                                //printData();
-
-                                              },
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 110,
-                                right: 20,
-                                child: GestureDetector(
-                                    child: Icon(
-                                      AntDesign.setting,
-                                      color: Colors.grey[700],
-                                      size: 30,
-                                    )
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: Container(
-                                    child: Image.asset(
-                                      'assets/images/user.png',
-                                      width: innerWidth * 0.30,
-                                      fit: BoxFit.fitWidth,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      height: 10,
-                    ),
-                    Container(
-                      height: height * 0.3,
-                      width: width,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        color: MyColors.xLightTeal,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              height: 20,
-                            ),
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.settings),
-                                  Text(
-                                    ' Preferences',
-                                    style: TextStyle(
-                                      color: MyColors.darkTeal,
-                                      fontSize: 20,
-                                      fontFamily: 'Nunito',
-                                    ),
-                                  ),
-                                ]
-                            ),
-                            Divider(
-                              thickness: 2.5,
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 0, vertical: 20),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.add_location_alt_rounded),
-                                      Container(
-                                        width: width * 0.62,
-                                        child: Container(
-                                          child: Text("${Globals.usersPref}",
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: MyColors.darkTeal),),
-                                          padding: EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 10),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  child: Icon(Icons.edit_outlined),
-                                  onTap: () {
-                                    _panelController.open();
-                                  },
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.speed_rounded),
-                                      Container(
-                                        width: width * 0.62,
-                                        child: Container(
-                                          child: Text(
-                                            "${Globals.measureSystem}",
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: MyColors.darkTeal),),
-                                          padding: EdgeInsets.symmetric(
-                                              vertical: 5, horizontal: 10),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  child: Icon(Icons.compare_arrows_rounded),
-                                  onTap: () async {
-                                    extractUserMetric();
-                                    if (Globals.measureSystem == "Kilometers") {
-                                      await usersRef.doc(getCurrentUserUID())
-                                          .update({'measureSystem': "Miles"})
-                                          .catchError((onError) =>
-                                          print(onError));
-                                    } else {
-                                      await usersRef.doc(getCurrentUserUID())
-                                          .update(
-                                          {'measureSystem': "Kilometers"})
-                                          .catchError((onError) =>
-                                          print(onError));
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
+                    Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
+                    SizedBox(height: height * 0.1,),
+                    Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
                   ],
                 ),
               ),
+            ):
+            Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  color: MyColors.darkTeal,
+                ),
+                Scaffold(
+                  backgroundColor: Colors.transparent,
+                  body: SingleChildScrollView(
+                    physics: BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 50),
+                      child: Column(
+                        children: [
+                          Container(
+                            height: height * 0.40,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                double innerHeight = constraints.maxHeight;
+                                double innerWidth = constraints.maxWidth;
+                                return Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Positioned(
+                                      child: Container(
+                                        margin: EdgeInsets.fromLTRB(
+                                            0, height * 0.08, 0, 0),
+                                        height: innerHeight * 0.50,
+                                        width: innerWidth,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(30),
+                                          color: MyColors.xLightTeal,
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            SizedBox(
+                                              height: 45,
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                '${Globals.usersName}',
+                                                style: TextStyle(
+                                                    color: MyColors.darkTeal,
+                                                    fontFamily: 'Nunito',
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: width * 0.8,
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: width * 0.04,
+                                                  vertical: height * 0.01),
+                                              margin: EdgeInsets.symmetric(
+                                                  vertical: height * 0.07,
+                                                  horizontal: width * 0.01),
+                                              decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius: BorderRadius.circular(
+                                                      20)
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment
+                                                    .spaceBetween,
+                                                children: [
+                                                  Icon(Icons
+                                                      .drive_file_rename_outline),
+                                                  Container(
+                                                    width: width * 0.55,
+                                                    decoration: BoxDecoration(
+                                                        border: Border(
+                                                            bottom: BorderSide(
+                                                                color: MyColors
+                                                                    .darkTeal))
+                                                    ),
+                                                    child: TextField(
+                                                      controller: nameTextField,
+                                                      decoration: InputDecoration(
+                                                          hintText: '${Globals
+                                                              .usersName}',
+                                                          hintStyle: TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.grey),
+                                                          border: InputBorder.none
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  GestureDetector(
+                                                    child: Icon(
+                                                        Icons.done_outline_rounded),
+                                                    onTap: () {
+                                                      usersRef.doc(
+                                                          getCurrentUserUID()).update(
+                                                          {
+                                                            'displayName': nameTextField
+                                                                .text,
+                                                            'uid': getCurrentUserUID()
+                                                          }
+                                                      ).catchError((onError) =>
+                                                          print(onError));
+
+                                                      setState(() {
+                                                        changeDisplayName();
+                                                        extractUserName();
+                                                        nameTextField.clear();
+                                                      });
+                                                      //printData();
+
+                                                    },
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Center(
+                                        child: Container(
+                                          child: Image.asset(
+                                            'assets/images/user.png',
+                                            width: innerWidth * 0.30,
+                                            fit: BoxFit.fitWidth,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Container(
+                            height: height * 0.3,
+                            width: width,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              color: MyColors.xLightTeal,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 15),
+                              child: Column(
+                                children: [
+                                  SizedBox(
+                                    height: 20,
+                                  ),
+                                  Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.settings),
+                                        Text(
+                                          ' Preferences',
+                                          style: TextStyle(
+                                            color: MyColors.darkTeal,
+                                            fontSize: 20,
+                                            fontFamily: 'Nunito',
+                                          ),
+                                        ),
+                                      ]
+                                  ),
+                                  Divider(
+                                    thickness: 2.5,
+                                  ),
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 0, vertical: 20),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.add_location_alt_rounded),
+                                            Container(
+                                              width: width * 0.62,
+                                              child: Container(
+                                                child: Text("${Globals.usersPrefKey}",
+                                                  style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: MyColors.darkTeal),),
+                                                padding: EdgeInsets.symmetric(
+                                                    vertical: 10, horizontal: 10),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        child: Icon(Icons.edit_outlined),
+                                        onTap: () {
+                                          _panelController.open();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.speed_rounded),
+                                            Container(
+                                              width: width * 0.62,
+                                              child: Container(
+                                                child: Text(
+                                                  "${Globals.measureSystem}",
+                                                  style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: MyColors.darkTeal),),
+                                                padding: EdgeInsets.symmetric(
+                                                    vertical: 5, horizontal: 10),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        child: Icon(Icons.compare_arrows_rounded),
+                                        onTap: () async {
+                                          extractUserMetric();
+                                          if (Globals.measureSystem == "Kilometers") {
+                                            await usersRef.doc(getCurrentUserUID())
+                                                .update({'measureSystem': "Miles"})
+                                                .catchError((onError) =>
+                                                print(onError));
+                                          } else {
+                                            await usersRef.doc(getCurrentUserUID())
+                                                .update(
+                                                {'measureSystem': "Kilometers"})
+                                                .catchError((onError) =>
+                                                print(onError));
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                ScrollablePanel(
+                  controller: _panelController,
+                  defaultPanelState: PanelState.close,
+                  onExpand: () {
+                    _panelController.open();
+                  },
+                  builder: (context, controller) {
+                    return SingleChildScrollView(
+                      controller: controller,
+                      child: PanelView(placesTypes: placeTypes,
+                        panelController: _panelController,
+                        changeUserPref: changeDisplayPref,
+                        extractUserPref: extractUserPref,),
+                    );
+                  },
+                )
+              ],
             ),
-          ),
-          ScrollablePanel(
-            controller: _panelController,
-            defaultPanelState: PanelState.close,
-            onExpand: () {
-              _panelController.open();
-            },
-            builder: (context, controller) {
-              return SingleChildScrollView(
-                controller: controller,
-                child: PanelView(placesTypes: placeTypes,
-                  panelController: _panelController,
-                  changeUserPref: changeDisplayPref,
-                  extractUserPref: extractUserPref,),
-              );
-            },
-          )
-        ],
-      );
-    }
+          );
   }
 
   String getCurrentUserUID() {
@@ -471,11 +428,22 @@ class _CustomSettingsState extends State<CustomSettings> {
   void changeDisplayPref() async {
     Globals.showSpinner = true;
     if (Globals.showSpinner) CircularProgressIndicator();
-    await usersRef.doc(getCurrentUserUID()).get().then((value) {
-      setState(() {
-        Globals.usersPref = value['locationPref'];
-        Globals.showSpinner = false;
+    await usersRef.doc(getCurrentUserUID()).get().then((res) {
+      Globals.placeTypes.forEach((key, value) {
+        String extractedPref = res['locationPref'];
+        if (value == extractedPref){
+          print("===========================================================================");
+          setState(() {
+            Globals.usersPrefValue = value;
+            Globals.usersPrefKey = key;
+            Globals.showSpinner = false;
+          });
+        }
       });
+      // setState(() {
+      //   Globals.usersPrefValue = res['locationPref'];
+      //   Globals.showSpinner = false;
+      // });
     });
   }
 
@@ -485,8 +453,18 @@ class _CustomSettingsState extends State<CustomSettings> {
       result = value.data();
       return value.data();
     });
+
     setState(() {
-      Globals.usersPref = result['locationPref'];
+      Globals.placeTypes.forEach((key, value) {
+        String extractedPref = result['locationPref'];
+        if (value == extractedPref){
+          setState(() {
+            Globals.usersPrefValue = value;
+            Globals.usersPrefKey = key;
+            //Globals.showSpinner = false;
+          });
+        }
+      });
     });
     print("EXTRACTED USER PREF ================> ${result['locationPref']}");
     return result['locationPref'];
@@ -578,9 +556,13 @@ class _PanelViewState extends State<PanelView> {
                               ),
                             ),
                             onTap: () async {
-                              print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PUSHING PLACE REF INTO DB");
-
-                              await usersRef.doc(getCurrentUserUID()).update({'locationPref': "$i"})
+                              Globals.placeTypes.forEach((key, value) {
+                                if (key == i){
+                                  Globals.usersPrefValue = value;
+                                  Globals.usersPrefKey = key;
+                                }
+                              });
+                              await usersRef.doc(getCurrentUserUID()).update({'locationPref': "${Globals.usersPrefValue}"})
                                   .catchError((onError) => print(onError));
                               panelController.close();
                               await extractUserPref();
@@ -628,9 +610,6 @@ Widget showNearbyData(Map<String, String> placesTypes){
                   ),
                 ),
                 onTap: () {
-                  bool showSpinner = false;
-
-                  showSpinner = false;
                 }
               );
             },
