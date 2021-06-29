@@ -11,7 +11,7 @@ class Globals{
   static String usersPrefValue = "non";
   static String usersPrefKey = "non";
   static String measureSystem = "non";
-  static String progressStatusMessage = "";
+  static double distance = 0;
   static List<GooglePlace.SearchResult> nearbySearchResult = [];
   static StreamController<LatLng> cusMapStreamController = StreamController.broadcast();
   static StreamController<LatLng> cusPlacesStreamController = StreamController.broadcast();
@@ -24,13 +24,6 @@ class Globals{
   static List<String?> iDsOfPreferredPlaces = [];
   static bool enRoute = false;
   static Widget showPage = CustomSettings();
-  static AdvancedDrawerController advancedDrawerController = AdvancedDrawerController();
-
-  static handleMenuButtonPressed() {
-    // NOTICE: Manage Advanced Drawer state through the Controller.
-    // _advancedDrawerController.value = AdvancedDrawerValue.visible();
-    advancedDrawerController.showDrawer();
-  }
 
   //only being used for favourites section map routing navigation process
   static double? lat = 0;
@@ -45,6 +38,10 @@ class Globals{
     "Holy Places": "place_of_worship",
     "Interests": "point_of_interest",
     "Political": "political",
+    "Bar": "bar",
+    "Bank": "bank",
+    "Park": "amusement_park",
+    "Cafe": "cafe",
   };
 
 }

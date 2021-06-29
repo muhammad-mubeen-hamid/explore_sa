@@ -55,11 +55,6 @@ class LocationServices{
 
   static Future<bool> addMarkers(LatLng origin, LatLng destination) async {
 
-    // String? originSnippet = "";
-    // await getUserAddress().then((value) => print("============================================> ADDRESSES 1 - " + value.streetAddress.toString()));
-    // String? destinationSnippet = "";
-    // await getDestinationAddress().then((value) => print("============================================> ADDRESSES 2 - " + value.streetAddress.toString()));
-
     Marker startMarker = Marker(
       markerId: MarkerId(origin.toString()),
       position: LatLng(

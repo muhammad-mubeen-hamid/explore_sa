@@ -38,7 +38,6 @@ class _CustomPlacesState extends State<CustomPlaces> {
   @override
   void initState() {
     super.initState();
-    Globals.progressStatusMessage = "Loading\nFavourites";
     setState(() {
       Globals.showSpinner = true;
     });
@@ -98,7 +97,6 @@ class _CustomPlacesState extends State<CustomPlaces> {
             children: [
               Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
               SizedBox(height: height * 0.1,),
-              Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
             ],
           ),
         ),
@@ -129,6 +127,8 @@ class _CustomPlacesState extends State<CustomPlaces> {
                             ),
                             Wrap(
                               children: [
+                                Globals.favPlacesDetailResult.length < 1 ?
+                                Container(width: width * 0.9, height: height * 0.3, child: Text("No Data Available", textAlign: TextAlign.center, style: TextStyle(color: MyColors.xLightTeal),), padding: EdgeInsets.symmetric(vertical: height * 0.1, horizontal: 0),):
                                 Container(
                                     margin: EdgeInsets.fromLTRB(0, 10, 0, 0),
                                     width: width * 0.9,
@@ -167,20 +167,18 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                                         GestureDetector(
                                                           child: Icon(Icons.favorite_rounded, size: 32, color: MyColors.darkTeal,),
                                                           onTap: () async {
-                                                            DocumentSnapshot result;
-
-                                                            await usersRef.doc(auth.currentUser?.uid).get().then((value) {
-                                                              result = value;
-                                                              try {
-                                                                List<dynamic> data = result.get('favLocations');
-                                                              } catch (error){
-                                                                List<String> initialField = [];
-                                                                usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(initialField)});
-                                                              } finally {
-                                                                //usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(fav)});
-                                                              }
+                                                            setState(() {
+                                                              Globals.showSpinner = true;
                                                             });
-
+                                                            bool done = false;
+                                                            var val=[];
+                                                            val.add('${i?.placeId}');
+                                                            await usersRef.doc(auth.currentUser?.uid).update({"favLocations":FieldValue.arrayRemove(val)}).then((value){
+                                                              print("DONE =======================> DATA REMOVED");
+                                                            });
+                                                            setState(() {
+                                                              Globals.showSpinner = false;
+                                                            });
                                                           },
                                                         ),
                                                         Padding(
@@ -263,7 +261,9 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                     child: CarouselSlider(
                                       options: CarouselOptions(height: height * 0.3),
                                       items: Globals.prefPlacesDetailResult.map((i) {
-                                        return Builder(
+                                        return i?.rating == null ?
+                                        Container(width: double.infinity, child: Text("No Data Available", textAlign: TextAlign.center, style: TextStyle(color: MyColors.xLightTeal),), padding: EdgeInsets.symmetric(vertical: height * 0.1, horizontal: 0),):
+                                        Builder(
                                             builder: (BuildContext context) {
                                               return Column(
                                                 children: [
@@ -292,7 +292,7 @@ class _CustomPlacesState extends State<CustomPlaces> {
                                                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                                       children: [
                                                         GestureDetector(
-                                                          child: Icon(Icons.favorite_rounded, size: 32, color: MyColors.darkTeal,),
+                                                          child: Icon(Icons.favorite_rounded, size: 32, color: MyColors.xLightTeal,),
                                                           onTap: () async {
                                                             DocumentSnapshot result;
 
@@ -597,7 +597,6 @@ class _CustomPlacesState extends State<CustomPlaces> {
     LocationServices.resetMap();
     setState(() {
       Globals.showSpinner = true;
-      Globals.progressStatusMessage = "Calculating Route\nInformation";
       LocationServices.destinationLatLng = targetLatLng;
     });
 

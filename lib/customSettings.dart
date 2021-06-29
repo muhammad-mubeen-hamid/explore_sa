@@ -6,12 +6,9 @@ import 'package:explore_sa/globals.dart';
 import 'package:explore_sa/services/authService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:scrollable_panel/scrollable_panel.dart';
-
-import 'customMap.dart';
-import 'customPlaces.dart';
+import 'package:provider/provider.dart';
 import 'locationServices.dart';
 
 //----------------------------------_> Figure out how to add user data when signing up
@@ -51,7 +48,6 @@ class _CustomSettingsState extends State<CustomSettings> {
     super.initState();
     setState(() {
       Globals.showSpinner = true;
-      Globals.progressStatusMessage = "Fetching User\nData";
     });
     extractUserName().then((value) {
       Globals.usersName = value;
@@ -85,7 +81,6 @@ class _CustomSettingsState extends State<CustomSettings> {
                   children: [
                     Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
                     SizedBox(height: height * 0.1,),
-                    Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
                   ],
                 ),
               ),
@@ -105,6 +100,40 @@ class _CustomSettingsState extends State<CustomSettings> {
                           horizontal: 16, vertical: 50),
                       child: Column(
                         children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                AntDesign.arrowleft,
+                                color: MyColors.darkTeal,
+                              ),
+                              GestureDetector(
+                                child: Icon(
+                                  AntDesign.logout,
+                                  color: Colors.white,
+                                ),
+                                onTap: () {
+                                  context.read<AuthService>().signOut();
+                                },
+                              ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: 20,
+                          ),
+                          Text(
+                            'Profile',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontFamily: 'Nisebuschgardens',
+                            ),
+                          ),
+                          SizedBox(
+                            height: 22,
+                          ),
+
                           Container(
                             height: height * 0.40,
                             child: LayoutBuilder(

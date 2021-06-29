@@ -90,6 +90,7 @@ class _CustomFloatingActionButtonState extends State<CustomFloatingActionButton>
           foregroundColor: MyColors.xLightTeal,
           labelBackgroundColor: MyColors.xLightTeal,
           onTap: () {
+            Globals.distance = 0;
             widget.resetMap();
             widget.resetView();
           },

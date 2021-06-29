@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:explore_sa/customFloatingActionButton.dart';
@@ -6,7 +7,6 @@ import 'package:explore_sa/globals.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -17,9 +17,14 @@ import 'application_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_panel/scrollable_panel.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'customPlaces.dart';
-import 'customSettings.dart';
 import 'locationServices.dart';
+import 'package:top_snackbar_flutter/custom_snack_bar.dart';
+import 'package:top_snackbar_flutter/tap_bounce_container.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
+
+String selectedType = "";
+List<GooglePlace.SearchResult> custom = [];
+
 
 class CustomMap extends StatefulWidget {
   final Stream<LatLng> stream;
@@ -58,14 +63,12 @@ class _CustomMapState extends State<CustomMap> {
     super.initState();
     setState(() {
       Globals.showSpinner = true;
-      Globals.progressStatusMessage = "Loading \nLocation Data";
     });
     LocationServices.getUserAddress().then((value) {
       print("USER ADDRESS FOUND IN INIT ==================> ${value.streetAddress}");
     });
     LocationServices.polylinePoints = PolylinePoints();
     setState(() {
-      Globals.progressStatusMessage = "Locating \nNearby Preferences";
     });
     LocationServices.processNearbyPlaces().then((value) {
       Globals.nearbySearchResult = value;
@@ -87,6 +90,7 @@ class _CustomMapState extends State<CustomMap> {
         body: Container(
           child: Scaffold(
               body: Container(
+                width: size.width,
                 child: Globals.showSpinner ? Container(
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height,
@@ -98,7 +102,6 @@ class _CustomMapState extends State<CustomMap> {
                       children: [
                         Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
                         SizedBox(height: size.height * 0.1,),
-                        Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
                       ],
                     ),
                   ),
@@ -117,7 +120,6 @@ class _CustomMapState extends State<CustomMap> {
                           children: [
                             Center(child: CircularProgressIndicator(color: MyColors.xLightTeal,)),
                             SizedBox(height: size.height * 0.1,),
-                            Center(child: Text(Globals.progressStatusMessage, style: TextStyle(color: MyColors.xLightTeal), softWrap: true, textAlign: TextAlign.center,)),
                           ],
                         ),
                       ),
@@ -141,6 +143,34 @@ class _CustomMapState extends State<CustomMap> {
                         },
                       ),
                     ),
+                    //KM & MILES
+                    Globals.distance > 0 ?
+                    Container(
+                      width: size.width,
+                      margin: EdgeInsets.symmetric(vertical: size.height * 0.03, horizontal: (size.width * 0.05)),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.red,
+                                  ),
+                                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                                  color: MyColors.darkTeal,
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.speed_rounded, color: MyColors.xLightTeal, size: 18,),
+                                    Text(" ${getDistance()} ${Globals.measureSystem == "Miles" ? "MI": "KM"}", style: TextStyle(color: MyColors.xLightTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                  ],
+                                ),
+                              ),
+                          ),
+                        ],
+                      ),
+                    ): Container(),
                     Container(
                       width: size.width * 1,
                       padding: EdgeInsets.symmetric(
@@ -155,9 +185,7 @@ class _CustomMapState extends State<CustomMap> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           GestureDetector(
-                            child: Icon(AntDesign.menu_unfold),
-                            onTap: () {
-                            },
+                            child: Icon(Icons.my_location_rounded, size: 30,),
                           ),
                           Container(
                             width: size.width * 0.65,
@@ -174,6 +202,9 @@ class _CustomMapState extends State<CustomMap> {
                                     border: InputBorder.none
                                 ),
                                 onChanged: (value) async {
+                                  LocationServices.polylines = Set<Polyline>();
+                                  LocationServices.polineCoordinates = [];
+                                  LocationServices.polylinePoints = new PolylinePoints();
                                   result = await googlePlace.autocomplete.get(value, radius: 0);
                                   setState(() {
                                     appBloc.searchPlace(value);
@@ -187,54 +218,342 @@ class _CustomMapState extends State<CustomMap> {
                       ),
                     ),
                     Container(
-                      margin: EdgeInsets.fromLTRB(size.width * 0.05, size.width * 0.3, 0, 0),
-                      width: size.width * 0.8,
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: MyColors.darkTeal,
+                      margin: EdgeInsets.fromLTRB(size.width * 0.05, size.height * 0.155, 0, 0),
+                      width: size.width * 0.9,
+                      height: 30,
+                      child: ListView(
+                            children: [
+                              //RESTAURANT
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.restaurant_rounded, color: MyColors.darkTeal, size: 18,), Text(" Restaurants", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.all(Radius.circular(20)),
-                                  color: MyColors.xLightTeal,
-                                ),
-                                padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.restaurant_rounded, color: MyColors.darkTeal, size: 18,), Text(" Restaurants", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
-                                  ],
-                                ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Restaurant"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
                               ),
-                              onTap: () async {
-                                _panelController.open();
-                                LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
-                                //nearbySearchResult = await this.getNearbyPlaces().then((value) => value);
-                                getPhoto();
-                              }
-                          ),
-                          SizedBox(width: 5,),
-                          GestureDetector(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: MyColors.darkTeal,
-                                ),
-                                borderRadius: BorderRadius.all(Radius.circular(20)),
-                                color: MyColors.xLightTeal,
+                              SizedBox(width: 5,),
+                              //Finance
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.attach_money_rounded, color: MyColors.darkTeal, size: 18,), Text("Finance", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Finance"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
                               ),
-                              padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.shopping_cart_outlined, color: MyColors.darkTeal, size: 18,), Text(" Groceries", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
-                                ],
+                              SizedBox(width: 5,),
+                              //Health
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.local_hospital_rounded, color: MyColors.darkTeal, size: 18,), Text(" Health", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Health"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
                               ),
-                            ),
-                            onTap: () {
-                            },
-                          )
-                        ],
+                              SizedBox(width: 5,),
+                              //Landmark
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.landscape_rounded, color: MyColors.darkTeal, size: 18,), Text(" Landmark", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Landmark"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Nature
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.nature_people, color: MyColors.darkTeal, size: 18,), Text(" Nature", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Nature"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Holy Places
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.wb_shade, color: MyColors.darkTeal, size: 18,), Text(" Holy Places", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Holy Places"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Interests
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.fireplace_rounded, color: MyColors.darkTeal, size: 18,), Text(" Interests", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Interests"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Political
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.local_police_rounded, color: MyColors.darkTeal, size: 18,), Text(" Political", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Political"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Bar
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.sports_bar_rounded, color: MyColors.darkTeal, size: 18,), Text(" Bar", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Bar"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Park
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.park, color: MyColors.darkTeal, size: 18,), Text(" Park", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Park"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                              SizedBox(width: 5,),
+                              //Cafe
+                              GestureDetector(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: MyColors.darkTeal,
+                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                                      color: MyColors.xLightTeal,
+                                    ),
+                                    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.local_cafe_rounded, color: MyColors.darkTeal, size: 18,), Text(" Cafe", style: TextStyle(color: MyColors.darkTeal, fontSize: 12, fontWeight: FontWeight.bold),),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    _panelController.open();
+                                    Globals.placeTypes.forEach((key, value) {
+                                      if (key == "Cafe"){
+                                        print("VALUE OF SELECTED PLACE IS $value");
+                                        selectedType = value;
+                                      }
+                                    });
+                                    //LocationServices.addMultipleMarkers(LocationServices.getNearbySearchResult());
+                                    //getPhoto();
+                                  }
+                              ),
+                            ],
+                            scrollDirection: Axis.horizontal,
                       ),
                     ),
                     Column(
@@ -243,49 +562,51 @@ class _CustomMapState extends State<CustomMap> {
                         acp.isEmpty || acp.length == 0
                             ? Container()
                             : Container(
-                          margin: EdgeInsets.fromLTRB(0, size.height * 0.05, 0, 0),
-                          height: size.height * 0.5,
-                          child: ListView.builder(
-                              itemBuilder: (context, index) {
-                                return GestureDetector(
-                                  onTap: () async {
-                                    //LocationServices.resetMap();
-                                    GooglePlace.DetailsResponse? endResult = await googlePlace
-                                        .details.get(acp[index].placeId!);
-                                    GooglePlace.DetailsResponse? startResult = await googlePlace
-                                        .details.get(acp[index].placeId!);
-                                    LatLng targetLatLng = LocationServices.destinationLatLng = new LatLng(
-                                        endResult!.result!.geometry!.location!.lat!,
-                                        endResult.result!.geometry!.location!.lng!);
-                                    final GoogleMapController controller = await _controller.future;
-                                    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
-                                    )
-                                    );
-                                    _panelController.close();
-                                    Globals.progressStatusMessage = "Calculating Route\nInformation";
-                                    LocationServices.destinationLatLng = targetLatLng;
-                                    setState(() {
-                                      Globals.showSpinner = true;
-                                    });
-
-                                    await LocationServices.addMarkers(LocationServices.currentLatLng, LocationServices.destinationLatLng).then((value) {
+                          margin: EdgeInsets.fromLTRB(0, size.height * 0.04, 0, 0),
+                          height: size.height * 0.355,
+                              child: ListView.builder(
+                                itemBuilder: (context, index) {
+                                  return GestureDetector(
+                                    onTap: () async {
+                                      LocationServices.polylines = Set<Polyline>();
+                                      LocationServices.polineCoordinates = [];
+                                      LocationServices.polylinePoints = new PolylinePoints();
+                                      //LocationServices.resetMap();
+                                      GooglePlace.DetailsResponse? endResult = await googlePlace
+                                          .details.get(acp[index].placeId!);
+                                      GooglePlace.DetailsResponse? startResult = await googlePlace
+                                          .details.get(acp[index].placeId!);
+                                      LatLng targetLatLng = LocationServices.destinationLatLng = new LatLng(
+                                          endResult!.result!.geometry!.location!.lat!,
+                                          endResult.result!.geometry!.location!.lng!);
+                                      final GoogleMapController controller = await _controller.future;
+                                      controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: LocationServices.destinationLatLng, zoom: 15)
+                                      )
+                                      );
+                                      _panelController.close();
+                                      LocationServices.destinationLatLng = targetLatLng;
                                       setState(() {
-                                        searchTextField.text = "";
-                                        acp = [];
+                                        Globals.showSpinner = true;
+                                      });
+
+                                      await LocationServices.addMarkers(LocationServices.currentLatLng, LocationServices.destinationLatLng).then((value) {
                                         setState(() {
+                                          searchTextField.text = "";
+                                          acp = [];
+                                          setState(() {
+                                            Globals.showSpinner = false;
+                                          });
+                                        });
+                                      });
+                                      await LocationServices.setPolylines().then((value) {
+                                        setState(() {
+                                          searchTextField.text = "";
+                                          acp = [];
+                                          showFloatinActionButton = true;
                                           Globals.showSpinner = false;
                                         });
                                       });
-                                    });
-                                    await LocationServices.setPolylines().then((value) {
-                                      setState(() {
-                                        searchTextField.text = "";
-                                        acp = [];
-                                        showFloatinActionButton = true;
-                                        Globals.showSpinner = false;
-                                      });
-                                    });
-                                  },
+                                    },
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -386,13 +707,52 @@ class _CustomMapState extends State<CustomMap> {
     });
   }
 
+  String getDistance(){
+    double totalDistance = 0.0;
+
+    for (int i = 0; i < LocationServices.polineCoordinates.length - 1; i++) {
+      totalDistance += _coordinateDistance(
+        LocationServices.polineCoordinates[i].latitude,
+        LocationServices.polineCoordinates[i].longitude,
+        LocationServices.polineCoordinates[i + 1].latitude,
+        LocationServices.polineCoordinates[i + 1].longitude,
+      );
+    }
+
+// Storing the calculated total distance of the route
+    setState(() {
+      totalDistance = totalDistance;
+      print('DISTANCE: ${totalDistance} km');
+    });
+
+    if (Globals.measureSystem == "Miles"){
+      totalDistance = totalDistance * 0.621371;
+    }
+    return totalDistance.toStringAsFixed(2);
+
+  //   return Geolocator.distanceBetween(
+  //       LocationServices.currentLatLng.latitude,
+  //       LocationServices.currentLatLng.longitude,
+  //       LocationServices.destinationLatLng.latitude,
+  //       LocationServices.destinationLatLng.longitude);
+  }
+
+  double _coordinateDistance(lat1, lon1, lat2, lon2) {
+    var p = 0.017453292519943295;
+    var c = cos;
+    var a = 0.5 -
+        c((lat2 - lat1) * p) / 2 +
+        c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
+    return 12742 * asin(sqrt(a));
+  }
+
   void navigate(LatLng targetLatLng) async {
     bool val = true;
+    Globals.distance = 0;
     LocationServices.resetMap();
     setState(() {
       _panelController.close();
       Globals.showSpinner = true;
-      Globals.progressStatusMessage = "Calculating Route\nInformation";
       LocationServices.destinationLatLng = targetLatLng;
     });
 
@@ -412,22 +772,40 @@ class _CustomMapState extends State<CustomMap> {
         showFloatinActionButton = true;
         Globals.showSpinner = false;
       });
+    }).then((value) {
+      Globals.distance = double.parse(getDistance());
     });
   }
 }
 
-Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
-  String userPref = "All";
-  Globals.placeTypes.forEach((key, value) {
-    if (Globals.usersPrefValue == key){
-      userPref = value;
+Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult, BuildContext context) {
+  custom = [];
+  bool proceed = true;
+  nearbySearchResult.forEach((element) {
+    if (element.types?.contains(selectedType) == true){
+      print("FOUND PLACE =========+> ${custom.length}");
+      custom.add(element);
     }
   });
 
-  return Container(
+  custom.forEach((element) {
+    if (element.photos?.length == 0 || element.photos == null){
+      proceed = false;
+    }
+    if (element.rating == null){
+      proceed = false;
+    }
+  });
+
+  print("PROCEED IS <<<<<<<<<<======================================>>>>>>>>> $proceed");
+
+  return custom.length == 0 ?
+  Container(padding: EdgeInsets.symmetric(horizontal: 0, vertical: 50), width: MediaQuery.of(context).size.width, child: Text("No Places Found Nearby", textAlign: TextAlign.center, style: TextStyle(color: MyColors.xLightTeal),),
+  ): proceed ? Container(
       child: CarouselSlider(
         options: CarouselOptions(height: 170),
-        items: nearbySearchResult.map((i) {
+        items: custom.map((i) {
+          print("I AM PASSING THIS TO THE DISPLAY ${i.name} ${i.rating} ${i.types} ${i.placeId} ${i.geometry?.location?.lat} ${i.geometry?.location?.lng}");
           return Builder(
             builder: (BuildContext context) {
             //if (i.types?.contains(userPref) == true){
@@ -440,7 +818,8 @@ Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
                   i.geometry?.location?.lat,
                   i.geometry?.location?.lng,
                   i.types,
-                  i.placeId
+                  i.placeId,
+                context
                 )
               );
              }
@@ -452,10 +831,11 @@ Widget showNearbyData(List<GooglePlace.SearchResult> nearbySearchResult) {
           }
         ).toList(),
       )
-  );
+  ):
+  Container(padding: EdgeInsets.symmetric(horizontal: 0, vertical: 50), width: MediaQuery.of(context).size.width, child: Text("No Places Found Nearby", textAlign: TextAlign.center, style: TextStyle(color: MyColors.xLightTeal),));
 }
 
-Widget _boxes(String _image, String placeName, double rating, double? lat, double? lng, List<String>? types, String? placeId) {
+Widget _boxes(String _image, String placeName, double rating, double? lat, double? lng, List<String>? types, String? placeId, BuildContext context) {
   return  GestureDetector(
     child: Container(
       child: new FittedBox(
@@ -478,7 +858,7 @@ Widget _boxes(String _image, String placeName, double rating, double? lat, doubl
                 Container(
                   child: Padding(
                     padding: const EdgeInsets.all(0),
-                    child: myDetailsContainer1(placeName, rating, types, lat, lng, placeId),
+                    child: myDetailsContainer1(placeName, rating, types, lat, lng, placeId, context),
                   ),
                 ),
 
@@ -489,10 +869,11 @@ Widget _boxes(String _image, String placeName, double rating, double? lat, doubl
   );
 }
 
-Widget myDetailsContainer1(String placeName, double rating, List<String>? types, double? lat, double? lng, String? placeId) {
+Widget myDetailsContainer1(String placeName, double rating, List<String>? types, double? lat, double? lng, String? placeId, BuildContext context) {
   FirebaseAuth auth = FirebaseAuth.instance;
   CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
   List<String> fav = ["$placeId"];
+
   return Column(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: <Widget>[
@@ -514,7 +895,15 @@ Widget myDetailsContainer1(String placeName, double rating, List<String>? types,
                   usersRef.doc(auth.currentUser?.uid).update({'favLocations': FieldValue.arrayUnion(fav)});
                 }
               });
-
+              showTopSnackBar(
+                context,
+                CustomSnackBar.success(
+                  message:
+                  "Place Saved",
+                  backgroundColor: MyColors.xLightTeal,
+                  textStyle: TextStyle(color: MyColors.darkTeal, fontWeight: FontWeight.bold),
+                )
+              );
             },
           ),
           GestureDetector(
@@ -654,9 +1043,9 @@ class _PanelViewState extends State<_PanelView> {
             decoration: BoxDecoration(
               color: MyColors.darkTeal,
               borderRadius: const BorderRadius.only(topLeft: Radius.circular(circularBoxHeight), topRight: Radius.circular(circularBoxHeight)),
-              border: Border.all(color: MyColors.darkTeal),
+              border: Border.all(color: MyColors.xLightTeal),
             ),
-            child: showNearbyData(nearbySearchResult),
+            child: showNearbyData(nearbySearchResult, context),
           ),
         );
       },
